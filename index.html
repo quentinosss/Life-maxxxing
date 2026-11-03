@@ -131,6 +131,33 @@ table.week thead th { border-top: 0; color: var(--muted); font-weight: 600; }
 .hbar .track { height: 10px; background: var(--line); border-radius: 5px; overflow: hidden; }
 .hbar .fill { height: 100%; border-radius: 5px; }
 .hbar b { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
+.seg5 { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; }
+.seg5 button { flex: none; height: 36px; padding: 0 12px; border-radius: 18px; border: 1px solid var(--line); background: var(--surface); font-weight: 600; font-size: 13px; }
+.seg5 button[aria-pressed="true"], .seg3 button[aria-pressed="true"] { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+.seg3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.seg3 button { height: 36px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); font-weight: 600; font-size: 13px; }
+select { width: 100%; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); padding: 9px 8px; color: var(--ink); font: inherit; }
+.kv { display: flex; justify-content: space-between; gap: 10px; padding: 7px 0; border-top: 1px solid var(--line); font-size: 14px; }
+.kv:first-of-type { border-top: 0; }
+.kv b, .bhead b, .txr b { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.bline, .fund { padding: 8px 0; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 6px; }
+.bline:first-of-type, .fund:first-of-type { border-top: 0; }
+.bhead { display: flex; justify-content: space-between; gap: 10px; font-size: 14px; }
+.track { height: 10px; background: var(--line); border-radius: 5px; overflow: hidden; }
+.fill { height: 100%; border-radius: 5px; }
+.txrow { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 8px 0; border-top: 1px solid var(--line); }
+.txrow:first-of-type { border-top: 0; }
+.txrow .name { display: flex; flex-direction: column; min-width: 0; }
+.txrow .name small { color: var(--muted); font-size: 12px; }
+.txr { display: flex; align-items: center; gap: 8px; }
+.mini { height: 30px; padding: 0 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); font-size: 12px; font-weight: 600; }
+.mini.danger { color: var(--accent); }
+.check { display: flex; align-items: center; gap: 8px; font-size: 14px; align-self: end; height: 40px; }
+.check input { width: 20px; height: 20px; accent-color: var(--accent); }
+.fundact { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; align-items: center; }
+.okmsg { color: var(--good); font-weight: 600; font-size: 13px; }
+.linkbtn { display: flex; align-items: center; justify-content: center; text-decoration: none; color: var(--ink); font-size: 13px; }
+.btn:disabled { opacity: .5; }
 @media (prefers-reduced-motion: no-preference) { .toggle, .chip, .stepper button { transition: background .15s, color .15s; } }
 </style>
 </head>
@@ -146,6 +173,7 @@ table.week thead th { border-top: 0; color: var(--muted); font-weight: 600; }
   <section class="view" id="view-semaine" hidden></section>
   <section class="view" id="view-stats" hidden></section>
   <section class="view" id="view-sevrage" hidden></section>
+  <section class="view" id="view-budget" hidden></section>
   <section class="view" id="view-reglages" hidden></section>
 </div>
 
@@ -154,7 +182,7 @@ table.week thead th { border-top: 0; color: var(--muted); font-weight: 600; }
   <a href="#jour" data-view="jour">Jour</a>
   <a href="#semaine" data-view="semaine">Semaine</a>
   <a href="#stats" data-view="stats">Stats</a>
-  <a href="#sevrage" data-view="sevrage">Sevrage</a>
+  <a href="#budget" data-view="budget">Budget</a>
   <a href="#reglages" data-view="reglages">Réglages</a>
 </nav>
 
@@ -379,13 +407,15 @@ table.week thead th { border-top: 0; color: var(--muted); font-weight: 600; }
     const W = 320, H = 150, L = 38, R = 14, T = 10, B = 22;
     const n = series[0].pts.length;
     const vals = series.flatMap(s => s.pts.map(p => p.y)).filter(v => v != null);
-    const max = opt.max != null ? opt.max : niceMax(Math.max(1, opt.goal || 0, ...vals) * 1.05);
+    let min = opt.min0 === false ? Math.min(0, ...vals) : 0;
+    if (min < 0) min = -niceMax(-min * 1.05);
+    const max = opt.max != null ? opt.max : (min < 0 ? Math.max(0, ...vals) * 1.05 || 1 : niceMax(Math.max(1, opt.goal || 0, ...vals) * 1.05));
     const x = i => L + (n <= 1 ? (W - L - R) / 2 : i * (W - L - R) / (n - 1));
-    const y = v => T + (H - T - B) * (1 - v / max);
+    const y = v => T + (H - T - B) * (1 - (v - min) / (max - min));
     const fmt = opt.fmt || (v => Math.round(v));
     let g = "";
     for (let k = 0; k <= 4; k++) {
-      const v = max * k / 4;
+      const v = min + (max - min) * k / 4;
       g += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + y(v) + '" y2="' + y(v) + '" stroke="var(--line)" stroke-width="1"/>' +
         '<text x="' + (L - 4) + '" y="' + (y(v) + 3) + '" text-anchor="end">' + fmt(v) + '</text>';
     }
@@ -438,6 +468,7 @@ table.week thead th { border-top: 0; color: var(--muted); font-weight: 600; }
     const filled = data.filter(o => o.d);
     const g = G();
     let h = '<div class="stack">';
+    h += '<a class="btn linkbtn" href="#sevrage">Voir le sevrage : jours d\'affilée et économies</a>';
     h += '<div class="seg" role="group" aria-label="Période">' + [[7, "7 jours"], [30, "30 jours"], [0, "Tout"]].map(([v, t]) =>
       '<button type="button" data-range="' + v + '" aria-pressed="' + (statRange === v) + '">' + t + '</button>').join("") + '</div>';
     if (!filled.length) {
@@ -539,7 +570,7 @@ table.week thead th { border-top: 0; color: var(--muted); font-weight: 600; }
     for (const s of keys) { const g = bc - cost(getDay(s)); total += g; if (s.slice(0, 7) === m) month += g; }
     const items = [["Cigarette", d => d.cig === 0], ["Joints", d => d.joints === 0], ["Alcool", d => d.alcool === 0],
       ["Soda", d => d.soda === 0], [G().cafe + " café(s) max", d => d.cafe <= G().cafe], ["Réseaux " + G().reseaux + " min max", d => d.reseaux <= G().reseaux]];
-    let h = '<div class="stack">';
+    let h = '<div class="stack"><a class="btn linkbtn" href="#stats">‹ Retour aux statistiques</a>';
     h += '<div class="tiles"><div class="tile"><div class="k">Économisé au total</div><div class="v" style="color:var(--good)">' + euro(Math.max(0, total)) + '</div><div class="s">sur ' + keys.length + ' jour(s) suivi(s)</div></div>' +
       '<div class="tile"><div class="k">Ce mois-ci</div><div class="v">' + euro(Math.max(0, month)) + '</div><div class="s">avant : ' + euro(bc * 30) + ' par mois</div></div></div>';
     h += '<div class="card"><h2>Jours d\'affilée</h2>' + items.map(([n, f]) => {
@@ -635,7 +666,7 @@ table.week thead th { border-top: 0; color: var(--muted); font-weight: 600; }
       try {
         const d = JSON.parse(r.result);
         if (!d || typeof d.days !== "object" || !d.settings) throw new Error("format");
-        state = d; ensureDefaults(); markDirty(); renderReglages();
+        state = d; ensureDefaults(); ensureBudget(); markDirty(); renderReglages();
         document.getElementById("dataMsg").textContent = "Sauvegarde restaurée : " + Object.keys(state.days).length + " jour(s).";
       } catch (err) { document.getElementById("dataMsg").textContent = "Ce fichier n'est pas une sauvegarde Life Maxxxing."; }
     };
@@ -648,13 +679,368 @@ table.week thead th { border-top: 0; color: var(--muted); font-weight: 600; }
     if (b.id === "exportCsv") share("life-maxxxing-suivi-" + today + ".csv", csv(), "text/csv", msg, "Export créé : ouvre-le avec Excel ou enregistre-le dans Fichiers.");
   });
 
+
+  // ================= Module Budget =================
+  const CAT_OUT = ["Logement", "Transport", "Abonnements", "Assurances / mutuelle", "Courses", "Sorties", "Sport", "Santé", "Permis", "Loisirs", "Cadeaux", "Divers"];
+  const CAT_IN = ["Salaire", "Allocation chômage", "Autres revenus"];
+  const FREQ = { mensuel: ["Mensuel", 1], trimestriel: ["Trimestriel", 3], annuel: ["Annuel", 12], hebdo: ["Hebdo", 0] };
+  const ACCT = { courant: "Compte courant", epargne: "Épargne" };
+  function ensureBudget() {
+    const b = state.budget = state.budget || {};
+    b.startDate = b.startDate || today;
+    b.accounts = Object.assign({ courant: { start: 0 }, epargne: { start: 0 } }, b.accounts || {});
+    b.recurring = b.recurring || [];
+    b.tx = b.tx || [];
+    b.budgets = b.budgets || {};
+    b.funds = b.funds || [];
+    b.lastSevrage = b.lastSevrage || null;
+  }
+  ensureBudget();
+  const B = () => state.budget;
+  const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  const euro2 = v => (Math.round(v * 100) / 100).toLocaleString("fr-FR", { style: "currency", currency: "EUR" });
+  const monthStart = s => s.slice(0, 7) + "-01";
+  const monthEnd = s => { const d = parse(monthStart(s)); d.setMonth(d.getMonth() + 1); d.setDate(0); return iso(d); };
+  const addMonths = (s, n) => { const d = parse(monthStart(s)); d.setMonth(d.getMonth() + n); return iso(d); };
+  const fmtMonth = s => parse(monthStart(s)).toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
+  const fmtShort = s => parse(s).toLocaleDateString("fr-FR", { day: "numeric", month: "short" });
+
+  function occurrences(r, from, to) {
+    const out = [];
+    if (!r.start || (r.end && r.end < from) || r.start > to) return out;
+    const last = r.end && r.end < to ? r.end : to;
+    if (r.freq === "hebdo") {
+      for (let s = r.start, k = 0; s <= last && k < 1000; s = addDays(s, 7), k++) if (s >= from) out.push(s);
+      return out;
+    }
+    const step = FREQ[r.freq] ? FREQ[r.freq][1] : 1;
+    const day = parse(r.start).getDate();
+    const st = parse(r.start);
+    for (let k = 0; k < 600; k++) {
+      const d = new Date(st.getFullYear(), st.getMonth() + k * step, 1);
+      const dim = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+      d.setDate(Math.min(day, dim));
+      const s = iso(d);
+      if (s > last) break;
+      if (s >= from && s >= r.start) out.push(s);
+    }
+    return out;
+  }
+  // Tous les mouvements (saisis + échéances générées) entre deux dates
+  function movements(from, to) {
+    const b = B(), list = [];
+    for (const t of b.tx) if (t.date >= from && t.date <= to) list.push(t);
+    for (const r of b.recurring) for (const s of occurrences(r, from, to))
+      list.push({ id: r.id + "@" + s, date: s, amount: r.amount, kind: r.kind, cat: r.cat, note: r.label, account: r.account, to: r.to, fund: r.fund, recurring: true });
+    return list.sort((a, c) => a.date < c.date ? -1 : a.date > c.date ? 1 : 0);
+  }
+  function delta(m, acct) {
+    if (m.kind === "in") return m.account === acct ? m.amount : 0;
+    if (m.kind === "out") return m.account === acct ? -m.amount : 0;
+    if (m.kind === "transfer") return (m.account === acct ? -m.amount : 0) + ((m.to || (m.account === "courant" ? "epargne" : "courant")) === acct ? m.amount : 0);
+    return 0;
+  }
+  function balance(acct, upTo) {
+    const b = B();
+    if (upTo < b.startDate) return b.accounts[acct].start;
+    return movements(b.startDate, upTo).reduce((v, m) => v + delta(m, acct), b.accounts[acct].start);
+  }
+  function fundSaved(f, upTo) {
+    return movements(B().startDate, upTo || "9999-12-31").reduce((v, m) => m.fund !== f.id ? v : m.kind === "transfer" ? v + m.amount : m.kind === "out" ? v - m.amount : v, f.start || 0);
+  }
+  function fundMonthly(f) {
+    const before = fundSaved(f, addDays(monthStart(today), -1));
+    if (f.due) {
+      const due = parse(f.due), now = parse(today);
+      const months = Math.max(1, (due.getFullYear() - now.getFullYear()) * 12 + due.getMonth() - now.getMonth() + 1);
+      return Math.max(0, (f.target - before) / months);
+    }
+    return before >= f.target ? 0 : Math.min(f.monthly || 0, f.target - before);
+  }
+  function fundThisMonth(f) {
+    return movements(monthStart(today), monthEnd(today)).reduce((v, m) => m.fund === f.id && m.kind === "transfer" ? v + m.amount : v, 0);
+  }
+  function sevrageSavings() {
+    const since = B().lastSevrage;
+    const bc = baseCost();
+    return Object.keys(state.days).filter(s => (!since || s > since) && s <= today).reduce((v, s) => v + Math.max(0, bc - cost(getDay(s))), 0);
+  }
+
+  let bSeg = "bilan", bMonth = monthStart(today), confirmDel = null, bMsg = "";
+  function catOptions(kind, sel) {
+    const list = kind === "in" ? CAT_IN : CAT_OUT;
+    return list.map(c => '<option' + (c === sel ? " selected" : "") + '>' + esc(c) + '</option>').join("");
+  }
+  function acctOptions(sel) { return Object.keys(ACCT).map(k => '<option value="' + k + '"' + (k === sel ? " selected" : "") + '>' + ACCT[k] + '</option>').join(""); }
+  function fundOptions(sel) { return '<option value="">Aucune</option>' + B().funds.map(f => '<option value="' + f.id + '"' + (f.id === sel ? " selected" : "") + '>' + esc(f.name) + '</option>').join(""); }
+  function delBtn(id) { return '<button type="button" class="mini danger" data-del="' + id + '">' + (confirmDel === id ? "Confirmer ?" : "Suppr.") + '</button>'; }
+  function progress(r, col) { return '<div class="track"><div class="fill" style="width:' + Math.min(100, Math.round(r * 100)) + '%;background:' + col + '"></div></div>'; }
+
+  function renderBudget() {
+    const segs = [["bilan", "Bilan"], ["depenses", "Mouvements"], ["echeances", "Échéances"], ["provisions", "Provisions"], ["breglages", "Réglages"]];
+    let h = '<div class="stack"><div class="seg5" role="group" aria-label="Budget">' + segs.map(([k, n]) =>
+      '<button type="button" data-bseg="' + k + '" aria-pressed="' + (bSeg === k) + '">' + n + '</button>').join("") + '</div>';
+    if (bMsg) { h += '<p class="note okmsg">' + esc(bMsg) + '</p>'; bMsg = ""; }
+    h += ({ bilan: bilanHtml, depenses: depensesHtml, echeances: echeancesHtml, provisions: provisionsHtml, breglages: bReglagesHtml })[bSeg]();
+    h += '</div>';
+    document.getElementById("view-budget").innerHTML = h;
+  }
+
+  function monthBar() {
+    return '<div class="card datebar"><button type="button" data-bmonth="-1" aria-label="Mois précédent">‹</button><div class="label"><strong>' + fmtMonth(bMonth) +
+      '</strong><small>' + (bMonth === monthStart(today) ? "Mois en cours" : "") + '</small></div><button type="button" data-bmonth="1" aria-label="Mois suivant">›</button></div>';
+  }
+
+  function bilanHtml() {
+    const b = B(), cur = balance("courant", today), ep = balance("epargne", today);
+    const mEnd = monthEnd(today);
+    const future = movements(addDays(today, 1), mEnd);
+    const projection = cur + future.reduce((v, m) => v + delta(m, "courant"), 0);
+    const toFund = b.funds.reduce((v, f) => v + Math.max(0, fundMonthly(f) - fundThisMonth(f)), 0);
+    const daysLeft = Math.round((parse(mEnd) - parse(today)) / 864e5) + 1;
+    const perDay = (projection - toFund) / daysLeft;
+    let h = '<div class="tiles">' +
+      '<div class="tile"><div class="k">Compte courant</div><div class="v">' + euro2(cur) + '</div><div class="s">aujourd\'hui</div></div>' +
+      '<div class="tile"><div class="k">Épargne</div><div class="v">' + euro2(ep) + '</div><div class="s">dont provisions ' + euro2(b.funds.reduce((v, f) => v + fundSaved(f, today), 0)) + '</div></div>' +
+      '<div class="tile"><div class="k">Fin de mois prévue</div><div class="v" style="color:' + (projection < 0 ? "var(--accent)" : "var(--ink)") + '">' + euro2(projection) + '</div><div class="s">après les échéances</div></div>' +
+      '<div class="tile"><div class="k">À dépenser par jour</div><div class="v" style="color:' + (perDay < 0 ? "var(--accent)" : "var(--good)") + '">' + euro2(perDay) + '</div><div class="s">' + daysLeft + ' j restants, provisions déduites</div></div></div>';
+
+    // Budgets par catégorie (mois choisi)
+    h += monthBar();
+    const ms = monthStart(bMonth), me = monthEnd(bMonth);
+    const mv = movements(ms, me);
+    const spent = {}; let inc = 0, out = 0, imprevu = 0;
+    for (const m of mv) {
+      if (m.kind === "in") inc += m.amount;
+      if (m.kind === "out") { out += m.amount; if (m.imprevu) imprevu += m.amount; if (!m.fund) spent[m.cat] = (spent[m.cat] || 0) + m.amount; }
+    }
+    h += '<div class="card"><h2>Le mois en bref</h2><div class="kv"><span>Revenus</span><b style="color:var(--good)">' + euro2(inc) + '</b></div>' +
+      '<div class="kv"><span>Dépenses</span><b>' + euro2(out) + '</b></div><div class="kv"><span>dont imprévus</span><b>' + euro2(imprevu) + '</b></div>' +
+      '<div class="kv"><span>Solde du mois</span><b style="color:' + (inc - out < 0 ? "var(--accent)" : "var(--good)") + '">' + euro2(inc - out) + '</b></div></div>';
+    const cats = CAT_OUT.filter(c => b.budgets[c] || spent[c]);
+    h += '<div class="card"><h2>Budgets par catégorie</h2>' + (cats.length ? cats.map(c => {
+      const bud = b.budgets[c] || 0, sp = spent[c] || 0, r = bud ? sp / bud : 1;
+      const col = !bud ? "var(--muted)" : r > 1 ? "var(--accent)" : r >= 0.8 ? "var(--warn)" : "var(--good)";
+      return '<div class="bline"><div class="bhead"><span>' + esc(c) + '</span><b>' + euro2(sp) + (bud ? ' / ' + euro2(bud) : '') + '</b></div>' + progress(r, col) + '</div>';
+    }).join("") : '<p class="note">Fixe tes enveloppes dans Budget, puis Réglages.</p>') + '</div>';
+
+    // Échéances à venir
+    const next = movements(addDays(today, 1), addDays(today, 30)).filter(m => m.recurring);
+    h += '<div class="card"><h2>Échéances des 30 prochains jours</h2>' + (next.length ? next.map(m =>
+      '<div class="kv"><span>' + fmtShort(m.date) + ' · ' + esc(m.note) + '</span><b style="color:' + (m.kind === "in" ? "var(--good)" : "var(--ink)") + '">' + (m.kind === "in" ? "+" : "−") + euro2(m.amount) + '</b></div>').join("")
+      : '<p class="note">Aucune échéance. Ajoute ton salaire et tes prélèvements dans Échéances.</p>') + '</div>';
+
+    // Évolution des soldes (90 jours)
+    const start = addDays(today, -89) < b.startDate ? b.startDate : addDays(today, -89);
+    const pts = [], pts2 = [];
+    let vC = balance("courant", addDays(start, -1)), vE = balance("epargne", addDays(start, -1));
+    const all = movements(start, today);
+    let idx = 0;
+    for (let s = start; s <= today; s = addDays(s, 1)) {
+      while (idx < all.length && all[idx].date === s) { vC += delta(all[idx], "courant"); vE += delta(all[idx], "epargne"); idx++; }
+      pts.push({ x: fmtShort(s), y: Math.round(vC) }); pts2.push({ x: fmtShort(s), y: Math.round(vE) });
+    }
+    if (pts.length > 1) h += '<div class="card"><h2>Évolution des soldes</h2>' + lineChart([{ pts, color: "var(--ink)" }, { pts: pts2, color: "var(--good)" }],
+      { label: "Soldes", fmt: v => Math.round(v) + "€", min0: false }) + '<div class="legend"><span><i style="background:var(--ink)"></i>Compte courant</span><span><i style="background:var(--good)"></i>Épargne</span></div></div>';
+
+    // Dépenses par catégorie (mois)
+    const tot = Object.values(spent).reduce((a, c) => a + c, 0);
+    const rows = Object.entries(spent).sort((a, c) => c[1] - a[1]);
+    if (rows.length) h += '<div class="card"><h2>Répartition des dépenses</h2>' + rows.map(([c, v]) =>
+      '<div class="hbar"><span>' + esc(c) + '</span>' + progress(v / tot, "var(--accent)") + '<b>' + Math.round(v / tot * 100) + '%</b></div>').join("") + '</div>';
+    return h;
+  }
+
+  function depensesHtml() {
+    const b = B();
+    let h = '<div class="card stack"><h2>Ajouter un mouvement</h2>' +
+      '<div class="seg3"><button type="button" data-tkind="out" aria-pressed="' + (txKind === "out") + '">Dépense</button><button type="button" data-tkind="in" aria-pressed="' + (txKind === "in") + '">Revenu</button><button type="button" data-tkind="transfer" aria-pressed="' + (txKind === "transfer") + '">Virement</button></div>' +
+      '<div class="grid2"><label class="field" for="tx-amount">Montant (€)<input type="number" inputmode="decimal" id="tx-amount" step="0.01" min="0" placeholder="0,00"></label>' +
+      '<label class="field" for="tx-date">Date<input type="date" id="tx-date" value="' + today + '"></label>';
+    if (txKind === "transfer") {
+      h += '<label class="field" for="tx-account">De<select id="tx-account">' + acctOptions("courant") + '</select></label>' +
+        '<label class="field" for="tx-fund">Vers la provision<select id="tx-fund">' + fundOptions("") + '</select></label></div>' +
+        '<p class="note">Un virement va du compte choisi vers l\'autre compte.</p>';
+    } else {
+      h += '<label class="field" for="tx-cat">Catégorie<select id="tx-cat">' + catOptions(txKind, "") + '</select></label>' +
+        '<label class="field" for="tx-account">Compte<select id="tx-account">' + acctOptions("courant") + '</select></label></div>';
+      if (txKind === "out") h += '<div class="grid2"><label class="field" for="tx-fund">Payé avec une provision<select id="tx-fund">' + fundOptions("") + '</select></label>' +
+        '<label class="check" for="tx-imprevu"><input type="checkbox" id="tx-imprevu"> Imprévu</label></div>';
+    }
+    h += '<label class="field" for="tx-note">Note<input type="text" id="tx-note" placeholder="Facultatif"></label>' +
+      '<button type="button" class="btn primary" id="tx-add">Ajouter</button></div>';
+    h += monthBar();
+    const list = movements(monthStart(bMonth), monthEnd(bMonth)).reverse();
+    h += '<div class="card"><h2>Mouvements du mois</h2>' + (list.length ? list.map(m => {
+      const sign = m.kind === "in" ? "+" : m.kind === "out" ? "−" : "⇄";
+      const label = m.kind === "transfer" ? "Virement " + (m.account === "courant" ? "vers épargne" : "vers courant") : m.cat;
+      const fund = m.fund ? (B().funds.find(f => f.id === m.fund) || {}).name : "";
+      return '<div class="txrow"><div class="name">' + esc(m.note || label) + '<small>' + fmtShort(m.date) + ' · ' + esc(label) + (m.recurring ? " · échéance" : "") + (m.imprevu ? " · imprévu" : "") + (fund ? " · " + esc(fund) : "") + '</small></div>' +
+        '<div class="txr"><b style="color:' + (m.kind === "in" ? "var(--good)" : "var(--ink)") + '">' + sign + euro2(m.amount) + '</b>' + (m.recurring ? "" : delBtn("tx:" + m.id)) + '</div></div>';
+    }).join("") : '<p class="note">Aucun mouvement ce mois-ci.</p>') + '</div>';
+    return h;
+  }
+  let txKind = "out", recKind = "out";
+
+  const REC_TEMPLATES = [["Salaire", "in", "Salaire"], ["Loyer", "out", "Logement"], ["Navigo", "out", "Transport"], ["Forfait mobile", "out", "Abonnements"],
+    ["Internet", "out", "Abonnements"], ["Mutuelle", "out", "Assurances / mutuelle"], ["Assurance habitation", "out", "Assurances / mutuelle"], ["Virement épargne", "transfer", ""]];
+  function echeancesHtml() {
+    const b = B();
+    const perMonth = r => r.freq === "hebdo" ? r.amount * 52 / 12 : r.amount / (FREQ[r.freq] ? FREQ[r.freq][1] : 1);
+    const ins = b.recurring.filter(r => r.kind === "in").reduce((v, r) => v + perMonth(r), 0);
+    const outs = b.recurring.filter(r => r.kind === "out").reduce((v, r) => v + perMonth(r), 0);
+    const trs = b.recurring.filter(r => r.kind === "transfer").reduce((v, r) => v + perMonth(r), 0);
+    let h = '<div class="tiles"><div class="tile"><div class="k">Revenus fixes / mois</div><div class="v" style="color:var(--good)">' + euro2(ins) + '</div></div>' +
+      '<div class="tile"><div class="k">Charges fixes / mois</div><div class="v">' + euro2(outs) + '</div><div class="s">épargne auto : ' + euro2(trs) + '</div></div></div>';
+    h += '<div class="card stack"><h2>Ajouter une échéance</h2><div class="chips">' + REC_TEMPLATES.map(([n, k, c], i) =>
+      '<button type="button" class="chip" data-rtpl="' + i + '">' + n + '</button>').join("") + '</div>' +
+      '<div class="seg3"><button type="button" data-rkind="out" aria-pressed="' + (recKind === "out") + '">Dépense</button><button type="button" data-rkind="in" aria-pressed="' + (recKind === "in") + '">Revenu</button><button type="button" data-rkind="transfer" aria-pressed="' + (recKind === "transfer") + '">Virement</button></div>' +
+      '<label class="field" for="rec-label">Libellé<input type="text" id="rec-label" value="' + esc(recDraft.label || "") + '"></label>' +
+      '<div class="grid2"><label class="field" for="rec-amount">Montant (€)<input type="number" inputmode="decimal" id="rec-amount" step="0.01" min="0" placeholder="0,00"></label>' +
+      '<label class="field" for="rec-freq">Fréquence<select id="rec-freq">' + Object.keys(FREQ).map(k => '<option value="' + k + '">' + FREQ[k][0] + '</option>').join("") + '</select></label>' +
+      '<label class="field" for="rec-start">Première date<input type="date" id="rec-start" value="' + (recDraft.start || today) + '"></label>' +
+      '<label class="field" for="rec-end">Fin (facultatif)<input type="date" id="rec-end"></label>' +
+      (recKind === "transfer"
+        ? '<label class="field" for="rec-account">De<select id="rec-account">' + acctOptions("courant") + '</select></label><label class="field" for="rec-fund">Vers la provision<select id="rec-fund">' + fundOptions("") + '</select></label>'
+        : '<label class="field" for="rec-cat">Catégorie<select id="rec-cat">' + catOptions(recKind, recDraft.cat || "") + '</select></label><label class="field" for="rec-account">Compte<select id="rec-account">' + acctOptions("courant") + '</select></label>') +
+      '</div><p class="note">L\'échéance est comptée automatiquement chaque fois que sa date arrive, au même jour du mois.</p>' +
+      '<button type="button" class="btn primary" id="rec-add">Ajouter l\'échéance</button></div>';
+    h += '<div class="card"><h2>Mes échéances</h2>' + (b.recurring.length ? b.recurring.slice().sort((a, c) => a.kind < c.kind ? -1 : 1).map(r => {
+      const next = occurrences(r, today, addDays(today, 400))[0];
+      return '<div class="txrow"><div class="name">' + esc(r.label) + '<small>' + FREQ[r.freq][0] + (next ? ' · prochaine le ' + fmtShort(next) : ' · terminée') + (r.end ? ' · jusqu\'au ' + fmtShort(r.end) : '') + '</small></div>' +
+        '<div class="txr"><b style="color:' + (r.kind === "in" ? "var(--good)" : "var(--ink)") + '">' + (r.kind === "in" ? "+" : r.kind === "out" ? "−" : "⇄") + euro2(r.amount) + '</b>' + delBtn("rec:" + r.id) + '</div></div>';
+    }).join("") : '<p class="note">Commence par ton salaire et ton loyer avec les boutons rapides au-dessus.</p>') + '</div>';
+    return h;
+  }
+  let recDraft = {};
+
+  const FUND_TEMPLATES = [["Noël", 300, today.slice(0, 4) + "-12-15"], ["Fonds de secours", 1000, ""], ["Permis de conduire", 1500, ""], ["Vacances", 600, ""]];
+  function provisionsHtml() {
+    const b = B();
+    const sav = sevrageSavings();
+    let h = '<div class="card stack"><h2>Économies du sevrage</h2><p class="note" style="font-size:13px">Depuis ' + (b.lastSevrage ? "le dernier versement (" + fmtShort(b.lastSevrage) + ")" : "le début du suivi") + ', tu as économisé <b>' + euro2(sav) + '</b> sur le tabac, l\'alcool, le soda et le café.</p>' +
+      (b.funds.length ? '<div class="grid2"><label class="field" for="sev-fund">Verser dans<select id="sev-fund">' + b.funds.map(f => '<option value="' + f.id + '">' + esc(f.name) + '</option>').join("") + '</select></label>' +
+        '<button type="button" class="btn primary" id="sev-go" style="align-self:end"' + (sav < 0.01 ? " disabled" : "") + '>Verser ' + euro2(sav) + '</button></div>' : '<p class="note">Crée d\'abord une provision ci-dessous.</p>') + '</div>';
+    h += '<div class="card"><h2>Mes provisions</h2>' + (b.funds.length ? b.funds.map(f => {
+      const saved = fundSaved(f, today), m = fundMonthly(f), done = fundThisMonth(f);
+      return '<div class="fund"><div class="bhead"><span><b>' + esc(f.name) + '</b>' + (f.due ? ' · pour le ' + fmtShort(f.due) : '') + '</span><b>' + euro2(saved) + ' / ' + euro2(f.target) + '</b></div>' +
+        progress(f.target ? saved / f.target : 0, saved >= f.target ? "var(--good)" : "var(--warn)") +
+        '<p class="note">' + (saved >= f.target ? "Objectif atteint." : "À mettre de côté ce mois-ci : " + euro2(Math.max(0, m - done)) + (done ? " (déjà " + euro2(done) + ")" : "")) + '</p>' +
+        '<div class="fundact"><input type="number" inputmode="decimal" step="0.01" min="0" id="fund-amt-' + f.id + '" placeholder="' + (m > done ? (Math.round((m - done) * 100) / 100) : "Montant") + '">' +
+        '<button type="button" class="btn" data-feed="' + f.id + '">Alimenter</button>' + delBtn("fund:" + f.id) + '</div></div>';
+    }).join("") : '<p class="note">Une provision, c\'est de l\'argent mis de côté pour une dépense ponctuelle : Noël, permis, imprévus.</p>') + '</div>';
+    h += '<div class="card stack"><h2>Nouvelle provision</h2><div class="chips">' + FUND_TEMPLATES.map(([n], i) => '<button type="button" class="chip" data-ftpl="' + i + '">' + n + '</button>').join("") + '</div>' +
+      '<div class="grid2"><label class="field" for="f-name">Nom<input type="text" id="f-name" value="' + esc(fundDraft.name || "") + '"></label>' +
+      '<label class="field" for="f-target">Objectif (€)<input type="number" inputmode="decimal" id="f-target" step="1" min="0" value="' + (fundDraft.target || "") + '"></label>' +
+      '<label class="field" for="f-due">Pour le (facultatif)<input type="date" id="f-due" value="' + (fundDraft.due || "") + '"></label>' +
+      '<label class="field" for="f-monthly">Sans date : par mois (€)<input type="number" inputmode="decimal" id="f-monthly" step="1" min="0" value="' + (fundDraft.monthly || "") + '"></label>' +
+      '<label class="field" for="f-start">Déjà de côté (€)<input type="number" inputmode="decimal" id="f-start" step="1" min="0" value="0"></label></div>' +
+      '<p class="note">Avec une date, l\'appli calcule le montant mensuel. Pour les imprévus, choisis un montant fixe par mois. Une dépense « payée avec une provision » est prise sur la provision, pas sur ton budget du mois.</p>' +
+      '<button type="button" class="btn primary" id="f-add">Créer la provision</button></div>';
+    return h;
+  }
+  let fundDraft = {};
+
+  function bReglagesHtml() {
+    const b = B();
+    let h = '<div class="card stack"><h2>Soldes de départ</h2><label class="field" for="bs-date">Date des soldes<input type="date" id="bs-date" value="' + b.startDate + '"></label>' +
+      '<div class="grid2"><label class="field" for="bs-courant">Compte courant (€)<input type="number" inputmode="decimal" step="0.01" id="bs-courant" value="' + b.accounts.courant.start + '"></label>' +
+      '<label class="field" for="bs-epargne">Épargne (€)<input type="number" inputmode="decimal" step="0.01" id="bs-epargne" value="' + b.accounts.epargne.start + '"></label></div>' +
+      '<p class="note">Mets les soldes affichés par ta banque à cette date. Tout ce qui arrive ensuite (échéances, mouvements) est calculé depuis là.</p></div>';
+    h += '<div class="card stack"><h2>Enveloppes mensuelles (€)</h2><div class="grid2">' + CAT_OUT.map((c, i) =>
+      '<label class="field" for="bb-' + i + '">' + esc(c) + '<input type="number" inputmode="decimal" step="5" min="0" id="bb-' + i + '" value="' + (b.budgets[c] || "") + '" placeholder="0"></label>').join("") + '</div>' +
+      '<p class="note">Laisse vide une catégorie sans enveloppe.</p></div>';
+    h += '<div class="card stack"><h2>Export</h2><p class="note">Tous les mouvements, échéances comprises, au format CSV pour Excel. La sauvegarde complète (Réglages de l\'appli) contient aussi le budget.</p>' +
+      '<button type="button" class="btn" id="b-export">Exporter les mouvements (CSV)</button><p class="note" id="bMsg"></p></div>';
+    return h;
+  }
+
+  function numVal(id) { const el = document.getElementById(id); return el ? parseFloat(String(el.value).replace(",", ".")) : NaN; }
+  function val(id) { const el = document.getElementById(id); return el ? el.value : ""; }
+  function bSave(msg) { markDirty(); bMsg = msg || ""; renderBudget(); }
+
+  document.getElementById("view-budget").addEventListener("click", e => {
+    const t = e.target.closest("button"); if (!t) return;
+    const b = B(), d = t.dataset;
+    if (d.del == null && confirmDel) confirmDel = null;
+    if (d.bseg) { bSeg = d.bseg; confirmDel = null; renderBudget(); return; }
+    if (d.bmonth) { bMonth = addMonths(bMonth, Number(d.bmonth)); renderBudget(); return; }
+    if (d.tkind) { txKind = d.tkind; renderBudget(); return; }
+    if (d.rkind) { recKind = d.rkind; renderBudget(); return; }
+    if (d.rtpl != null) { const [n, k, c] = REC_TEMPLATES[Number(d.rtpl)]; recKind = k; recDraft = { label: n, cat: c }; renderBudget(); const a = document.getElementById("rec-amount"); if (a) a.focus(); return; }
+    if (d.ftpl != null) { const [n, tg, due] = FUND_TEMPLATES[Number(d.ftpl)]; fundDraft = { name: n, target: tg, due, monthly: due ? "" : Math.round(tg / 10) }; renderBudget(); return; }
+    if (d.del) {
+      if (confirmDel !== d.del) { confirmDel = d.del; renderBudget(); return; }
+      const [type, id] = d.del.split(":");
+      if (type === "tx") b.tx = b.tx.filter(x => x.id !== id);
+      if (type === "rec") b.recurring = b.recurring.filter(x => x.id !== id);
+      if (type === "fund") { b.funds = b.funds.filter(x => x.id !== id); b.tx.forEach(x => { if (x.fund === id) delete x.fund; }); b.recurring.forEach(x => { if (x.fund === id) delete x.fund; }); }
+      confirmDel = null; bSave("Supprimé."); return;
+    }
+    if (t.id === "tx-add") {
+      const amount = numVal("tx-amount");
+      if (!(amount > 0)) { bMsg = "Indique un montant supérieur à 0."; renderBudget(); return; }
+      const tx = { id: uid(), date: val("tx-date") || today, amount, kind: txKind, account: val("tx-account") || "courant", note: val("tx-note").trim() };
+      if (txKind !== "transfer") tx.cat = val("tx-cat");
+      if (txKind === "transfer") { tx.to = tx.account === "courant" ? "epargne" : "courant"; tx.cat = "Virement"; }
+      const fund = val("tx-fund"); if (fund) { tx.fund = fund; if (txKind === "out") tx.account = "epargne"; if (txKind === "transfer") { tx.account = "courant"; tx.to = "epargne"; } }
+      if (txKind === "out" && document.getElementById("tx-imprevu") && document.getElementById("tx-imprevu").checked) tx.imprevu = true;
+      b.tx.push(tx); bMonth = monthStart(tx.date); bSave("Mouvement ajouté : " + euro2(amount) + "."); return;
+    }
+    if (t.id === "rec-add") {
+      const amount = numVal("rec-amount"), label = val("rec-label").trim();
+      if (!(amount > 0) || !label) { bMsg = "Indique un libellé et un montant."; renderBudget(); return; }
+      const r = { id: uid(), label, amount, kind: recKind, freq: val("rec-freq") || "mensuel", start: val("rec-start") || today, end: val("rec-end") || "", account: val("rec-account") || "courant" };
+      if (recKind === "transfer") { r.to = r.account === "courant" ? "epargne" : "courant"; r.cat = "Virement"; const f = val("rec-fund"); if (f) { r.fund = f; r.account = "courant"; r.to = "epargne"; } }
+      else r.cat = val("rec-cat");
+      b.recurring.push(r); recDraft = {}; bSave("Échéance ajoutée : " + label + "."); return;
+    }
+    if (t.id === "f-add") {
+      const name = val("f-name").trim(), target = numVal("f-target");
+      if (!name || !(target > 0)) { bMsg = "Indique un nom et un objectif."; renderBudget(); return; }
+      b.funds.push({ id: uid(), name, target, due: val("f-due") || "", monthly: numVal("f-monthly") || 0, start: numVal("f-start") || 0 });
+      fundDraft = {}; bSave("Provision créée : " + name + "."); return;
+    }
+    if (d.feed) {
+      const f = b.funds.find(x => x.id === d.feed); if (!f) return;
+      let amount = numVal("fund-amt-" + f.id);
+      if (!(amount > 0)) amount = Math.round(Math.max(0, fundMonthly(f) - fundThisMonth(f)) * 100) / 100;
+      if (!(amount > 0)) { bMsg = "Indique le montant à mettre de côté."; renderBudget(); return; }
+      b.tx.push({ id: uid(), date: today, amount, kind: "transfer", account: "courant", to: "epargne", fund: f.id, cat: "Virement", note: "Provision " + f.name });
+      bSave(euro2(amount) + " mis de côté pour " + f.name + "."); return;
+    }
+    if (t.id === "sev-go") {
+      const amount = Math.round(sevrageSavings() * 100) / 100, f = val("sev-fund");
+      if (!(amount > 0) || !f) return;
+      b.tx.push({ id: uid(), date: today, amount, kind: "transfer", account: "courant", to: "epargne", fund: f, cat: "Virement", note: "Économies du sevrage" });
+      b.lastSevrage = today; bSave(euro2(amount) + " versés depuis tes économies du sevrage."); return;
+    }
+    if (t.id === "b-export") {
+      const rows = [["date", "type", "categorie", "libelle", "montant", "compte", "provision", "imprevu", "echeance"].join(";")];
+      const q = v => { const s = String(v == null ? "" : v); return /[";\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
+      for (const m of movements(b.startDate, addDays(today, 0))) {
+        const kind = m.kind === "in" ? "revenu" : m.kind === "out" ? "dépense" : "virement";
+        const amt = (m.kind === "out" ? -m.amount : m.amount).toFixed(2).replace(".", ",");
+        const fund = m.fund ? (b.funds.find(f => f.id === m.fund) || {}).name : "";
+        rows.push([m.date, kind, q(m.cat), q(m.note), amt, ACCT[m.account] || m.account, q(fund || ""), m.imprevu ? "x" : "", m.recurring ? "x" : ""].join(";"));
+      }
+      share("life-maxxxing-budget-" + today + ".csv", "﻿" + rows.join("\n"), "text/csv", document.getElementById("bMsg"), "Export créé : ouvre-le avec Excel.");
+    }
+  });
+  document.getElementById("view-budget").addEventListener("change", e => {
+    const t = e.target, b = B(); if (!t.id) return;
+    if (t.id === "bs-date") { b.startDate = t.value || today; markDirty(); }
+    else if (t.id === "bs-courant" || t.id === "bs-epargne") { b.accounts[t.id.slice(3)].start = parseFloat(String(t.value).replace(",", ".")) || 0; markDirty(); }
+    else if (t.id.startsWith("bb-")) { const c = CAT_OUT[Number(t.id.slice(3))]; const v = parseFloat(String(t.value).replace(",", ".")); if (v > 0) b.budgets[c] = v; else delete b.budgets[c]; markDirty(); }
+  });
+
   // ---------------- Navigation ----------------
-  const VIEWS = ["jour", "semaine", "stats", "sevrage", "reglages"];
+  const VIEWS = ["jour", "semaine", "stats", "sevrage", "budget", "reglages"];
   function show() {
     const v = VIEWS.includes(location.hash.slice(1)) ? location.hash.slice(1) : "jour";
     VIEWS.forEach(n => { document.getElementById("view-" + n).hidden = n !== v; });
-    document.querySelectorAll("nav.tabs a").forEach(a => a.setAttribute("aria-current", a.dataset.view === v ? "page" : "false"));
-    ({ jour: renderJour, semaine: renderSemaine, stats: renderStats, sevrage: renderSevrage, reglages: renderReglages })[v]();
+    document.querySelectorAll("nav.tabs a").forEach(a => a.setAttribute("aria-current", a.dataset.view === (v === "sevrage" ? "stats" : v) ? "page" : "false"));
+    ({ jour: renderJour, semaine: renderSemaine, stats: renderStats, sevrage: renderSevrage, budget: renderBudget, reglages: renderReglages })[v]();
   }
   window.addEventListener("hashchange", show);
   show();
