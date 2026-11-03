@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Life Maxxxing">
+<meta name="theme-color" content="#F3F5F8">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-192.png">
+<title>Life Maxxxing</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Layout : une colonne mobile, onglets en bas, la journée comme une fiche à remplir de haut en bas */
+:root {
+  --bg: #F3F5F8;
+  --surface: #FFFFFF;
+  --ink: #17202C;
+  --muted: #5F6B7A;
+  --line: #DCE1E8;
+  --accent: #D9472B;
+  --accent-soft: #FBE6E1;
+  --good: #2E8B57;
+  --good-soft: #E1F2E8;
+  --warn: #B7791F;
+  --font-display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --font-body: "IBM Plex Sans", "Segoe UI", Arial, sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #11161D; --surface: #1A212B; --ink: #E8ECF1; --muted: #9AA6B4; --line: #2B3542;
+    --accent: #F06A4C; --accent-soft: #3A221D; --good: #4FBF83; --good-soft: #1C3328; --warn: #E0A84A;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #11161D; --surface: #1A212B; --ink: #E8ECF1; --muted: #9AA6B4; --line: #2B3542;
+  --accent: #F06A4C; --accent-soft: #3A221D; --good: #4FBF83; --good-soft: #1C3328; --warn: #E0A84A;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body { background: var(--bg); color: var(--ink); font: 15px/1.45 var(--font-body); -webkit-font-smoothing: antialiased; }
+button, input, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.wrap { max-width: 560px; margin: 0 auto; padding: calc(16px + env(safe-area-inset-top)) 16px calc(90px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 14px; }
+header.top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+h1 { font: 800 22px/1.1 var(--font-display); letter-spacing: -0.02em; margin: 0; }
+h1 span { color: var(--accent); }
+h2 { font: 700 13px/1.2 var(--font-display); text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin: 0 0 10px; }
+.save-state { font-size: 12px; color: var(--muted); text-align: right; }
+.save-state.dirty { color: var(--warn); }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px; }
+.datebar { display: grid; grid-template-columns: 40px 1fr 40px; align-items: center; gap: 8px; }
+.datebar button { height: 40px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); font-size: 18px; }
+.datebar .label { text-align: center; }
+.datebar .label strong { display: block; font: 700 17px var(--font-display); text-transform: capitalize; }
+.datebar .label small { color: var(--muted); }
+.scoreline { display: flex; align-items: center; gap: 14px; }
+.ring { width: 64px; height: 64px; flex: none; }
+.scoreline .big { font: 800 30px/1 var(--font-display); font-variant-numeric: tabular-nums; }
+.scoreline p { margin: 2px 0 0; color: var(--muted); font-size: 13px; }
+.row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 0; border-top: 1px solid var(--line); }
+.row:first-of-type { border-top: 0; padding-top: 0; }
+.row .name { display: flex; flex-direction: column; }
+.row .name small { color: var(--muted); font-size: 12px; }
+.toggle { min-width: 64px; height: 36px; border-radius: 18px; border: 1px solid var(--line); background: var(--bg); font-weight: 600; font-size: 13px; }
+.toggle[aria-pressed="true"] { background: var(--good); border-color: var(--good); color: #fff; }
+.stepper { display: flex; align-items: center; gap: 4px; }
+.stepper button { width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); font-size: 18px; line-height: 1; }
+.stepper output { min-width: 58px; text-align: center; font: 600 15px var(--font-body); font-variant-numeric: tabular-nums; }
+.stepper output.ok { color: var(--good); }
+.stepper output.bad { color: var(--accent); }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { padding: 7px 12px; border-radius: 16px; border: 1px solid var(--line); background: var(--bg); font-size: 13px; font-weight: 500; }
+.chip[aria-pressed="true"] { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+.mood { display: flex; gap: 8px; }
+.mood button { flex: 1; height: 40px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); font-weight: 600; }
+.mood button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+label.field { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); }
+textarea, input[type="text"], input[type="date"], input[type="number"] { width: 100%; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); padding: 9px 10px; color: var(--ink); }
+textarea { resize: vertical; min-height: 44px; }
+.stack { display: flex; flex-direction: column; gap: 10px; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.savebar { position: fixed; left: 0; right: 0; bottom: 64px; display: flex; justify-content: center; padding: 0 16px; pointer-events: none; }
+.savebar button { pointer-events: auto; max-width: 528px; width: 100%; height: 48px; border: 0; border-radius: 12px; background: var(--accent); color: #fff; font: 700 15px var(--font-display); box-shadow: 0 6px 18px rgba(0,0,0,0.18); }
+.savebar button:disabled { background: var(--line); color: var(--muted); box-shadow: none; }
+nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; height: calc(60px + env(safe-area-inset-bottom)); background: var(--surface); border-top: 1px solid var(--line); display: grid; grid-template-columns: repeat(4, 1fr); padding-bottom: env(safe-area-inset-bottom); }
+nav.tabs a { display: flex; align-items: center; justify-content: center; text-decoration: none; color: var(--muted); font-weight: 600; font-size: 13px; }
+nav.tabs a[aria-current="page"] { color: var(--accent); box-shadow: inset 0 3px 0 var(--accent); }
+.view[hidden] { display: none; }
+table.week { width: 100%; border-collapse: collapse; font-size: 12px; font-variant-numeric: tabular-nums; }
+table.week th, table.week td { padding: 6px 2px; text-align: center; border-top: 1px solid var(--line); }
+table.week th:first-child, table.week td:first-child { text-align: left; color: var(--muted); font-weight: 500; }
+table.week thead th { border-top: 0; color: var(--muted); font-weight: 600; }
+.dot { display: inline-block; width: 12px; height: 12px; border-radius: 50%; background: var(--line); }
+.dot.on { background: var(--good); }
+.dot.off { background: var(--accent); }
+.tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.tile { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 12px; }
+.tile .k { font-size: 12px; color: var(--muted); }
+.tile .v { font: 800 24px/1.15 var(--font-display); font-variant-numeric: tabular-nums; }
+.tile .s { font-size: 12px; color: var(--muted); }
+.streak { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-top: 1px solid var(--line); }
+.streak:first-of-type { border-top: 0; }
+.pill { padding: 3px 10px; border-radius: 12px; font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.pill.good { background: var(--good-soft); color: var(--good); }
+.pill.bad { background: var(--accent-soft); color: var(--accent); }
+.btn { height: 42px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); font-weight: 600; padding: 0 14px; }
+.btn.primary { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+.note { font-size: 12px; color: var(--muted); margin: 0; }
+.bars { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; align-items: end; height: 90px; margin-top: 6px; }
+.bars div { background: var(--good); border-radius: 4px 4px 0 0; min-height: 2px; }
+.bars div.empty { background: var(--line); }
+.barlabels { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; font-size: 11px; color: var(--muted); text-align: center; }
+@media (prefers-reduced-motion: no-preference) { .toggle, .chip, .stepper button { transition: background .15s, color .15s; } }
+</style>
+</head>
+<body>
+<script id="lm-state" type="application/json">{"settings":{"start":"2026-11-09","prices":{"paquet":13,"joint":3,"verre":4,"sodaL":1.5,"cafe":1.5},"base":{"cig":10,"joints":3.5,"alcool":1.8,"soda":66,"cafe":3}},"days":{}}</script>
+<div class="wrap">
+  <header class="top">
+    <h1>Life Max<span>xxx</span>ing</h1>
+    <div class="save-state" id="saveState">À jour</div>
+  </header>
+
+  <section class="view" id="view-jour"></section>
+  <section class="view" id="view-semaine" hidden></section>
+  <section class="view" id="view-sevrage" hidden></section>
+  <section class="view" id="view-reglages" hidden></section>
+</div>
+
+
+<nav class="tabs" aria-label="Sections">
+  <a href="#jour" data-view="jour">Jour</a>
+  <a href="#semaine" data-view="semaine">Semaine</a>
+  <a href="#sevrage" data-view="sevrage">Sevrage</a>
+  <a href="#reglages" data-view="reglages">Réglages</a>
+</nav>
+
+<script>
+(function () {
+  const DATA_KEY = "lm-data";
+  let state = JSON.parse(document.getElementById("lm-state").textContent);
+  let storageOk = true;
+  try { const saved = localStorage.getItem(DATA_KEY); if (saved) state = JSON.parse(saved); } catch (e) { storageOk = false; }
+  state.days = state.days || {};
+
+  const pad = n => String(n).padStart(2, "0");
+  const iso = d => d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
+  const parse = s => { const [y, m, d] = s.split("-").map(Number); return new Date(y, m - 1, d); };
+  const addDays = (s, n) => { const d = parse(s); d.setDate(d.getDate() + n); return iso(d); };
+  const today = iso(new Date());
+  let cur = (function () { try { return sessionStorage.getItem("lm-cur") || today; } catch (e) { return today; } })();
+  const fmtDay = s => parse(s).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
+  const euro = v => v.toLocaleString("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
+
+  const ACTIVITES = [
+    ["chinois", "Chinois", 30], ["lecture", "Lecture", 30], ["guitare", "Guitare", 30],
+    ["dessin", "Dessin", 30], ["emploi", "Recherche d'emploi", 120], ["code", "Code de la route", 30]
+  ];
+  const CONSO = [
+    ["cafe", "Cafés", 1, 1, "1 max"], ["soda", "Soda (cl)", 33, 0, "zéro"], ["cig", "Cigarettes", 1, 0, "zéro"],
+    ["joints", "Joints", 1, 0, "zéro"], ["alcool", "Alcool (verres)", 1, 0, "zéro"]
+  ];
+  const SPORTS = ["Calisthénie", "Piscine", "Running", "Vélo", "Marche", "Repos"];
+
+  function blank() {
+    return { lever: false, sommeil: 8, etir: false, medit: false, sport: "", repas: false,
+      chinois: 0, lecture: 0, guitare: 0, dessin: 0, emploi: 0, code: 0,
+      cafe: 0, soda: 0, cig: 0, joints: 0, alcool: 0, reseaux: 0, humeur: 0,
+      win: "", ameliorer: "", gratitude: "" };
+  }
+  const getDay = s => state.days[s] ? Object.assign(blank(), state.days[s]) : null;
+
+  function score(d) {
+    if (!d) return null;
+    const pts = [d.lever, d.sommeil >= 8, d.etir, d.medit, !!d.sport, d.chinois >= 30, d.lecture >= 30,
+      d.guitare >= 30, d.dessin >= 30, d.repas, d.cafe <= 1, d.soda === 0, d.cig === 0, d.joints === 0,
+      d.alcool === 0, d.reseaux <= 30];
+    return pts.filter(Boolean).length / 16;
+  }
+  function cost(d) {
+    const p = state.settings.prices;
+    return d.cig * p.paquet / 20 + d.joints * p.joint + d.alcool * p.verre + d.soda / 100 * p.sodaL + d.cafe * p.cafe;
+  }
+  function baseCost() {
+    const b = state.settings.base;
+    return cost({ cig: b.cig, joints: b.joints, alcool: b.alcool, soda: b.soda, cafe: b.cafe });
+  }
+
+  function markDirty() {
+    try { localStorage.setItem(DATA_KEY, JSON.stringify(state)); updateSaveUi("Enregistré sur ce téléphone"); }
+    catch (e) { updateSaveUi("Impossible d'enregistrer : stockage indisponible"); }
+  }
+  function updateSaveUi(msg) {
+    const el = document.getElementById("saveState");
+    el.textContent = msg || (storageOk ? "Données sur ce téléphone" : "Stockage indisponible");
+    el.classList.toggle("dirty", !storageOk);
+  }
+
+  function setField(k, v) {
+    const d = getDay(cur) || blank();
+    d[k] = v;
+    state.days[cur] = d;
+    markDirty();
+    renderJour();
+  }
+
+  // ---------------- Vue Jour ----------------
+  function ring(p) {
+    const r = 26, c = 2 * Math.PI * r, v = p == null ? 0 : p;
+    const col = v >= 0.75 ? "var(--good)" : v >= 0.5 ? "var(--warn)" : "var(--accent)";
+    return '<svg class="ring" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="' + r + '" fill="none" stroke="var(--line)" stroke-width="7"/>' +
+      '<circle cx="32" cy="32" r="' + r + '" fill="none" stroke="' + col + '" stroke-width="7" stroke-linecap="round" stroke-dasharray="' + (c * v) + " " + c + '" transform="rotate(-90 32 32)"/></svg>';
+  }
+  function toggle(k, on, id) {
+    return '<button type="button" class="toggle" id="' + id + '" data-toggle="' + k + '" aria-pressed="' + on + '">' + (on ? "Fait" : "À faire") + "</button>";
+  }
+  function stepper(k, val, step, cls, unit) {
+    return '<div class="stepper"><button type="button" data-step="' + k + '" data-d="-' + step + '" aria-label="Moins">−</button>' +
+      '<output class="' + cls + '" id="out-' + k + '">' + val + (unit || "") + '</output>' +
+      '<button type="button" data-step="' + k + '" data-d="' + step + '" aria-label="Plus">+</button></div>';
+  }
+  function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
+
+  function renderJour() {
+    const d = getDay(cur);
+    const v = d || blank();
+    const sc = score(d);
+    const weekend = [0, 6].includes(parse(cur).getDay());
+    let h = '<div class="stack">';
+    h += '<div class="card datebar"><button type="button" id="prev" aria-label="Jour précédent">‹</button>' +
+      '<div class="label"><strong>' + fmtDay(cur) + '</strong><small>' + (cur === today ? "Aujourd'hui" : (d ? "Journée remplie" : "Pas encore remplie")) + '</small></div>' +
+      '<button type="button" id="next" aria-label="Jour suivant">›</button></div>';
+    h += '<div class="card scoreline">' + ring(sc) + '<div><div class="big">' + (sc == null ? "–" : Math.round(sc * 100) + " %") + '</div>' +
+      '<p>' + (sc == null ? "Commence par cocher ta première habitude." : Math.round(sc * 16) + " objectifs sur 16 atteints") + '</p></div></div>';
+
+    h += '<div class="card"><h2>Matin</h2>' +
+      '<div class="row"><div class="name">Lever à l\'heure<small>8h en mode chômage</small></div>' + toggle("lever", v.lever, "t-lever") + '</div>' +
+      '<div class="row"><div class="name">Sommeil<small>objectif 8 h</small></div>' + stepper("sommeil", v.sommeil, 0.5, v.sommeil >= 8 ? "ok" : "bad", " h") + '</div>' +
+      '<div class="row"><div class="name">Étirements</div>' + toggle("etir", v.etir, "t-etir") + '</div>' +
+      '<div class="row"><div class="name">Méditation<small>10 min</small></div>' + toggle("medit", v.medit, "t-medit") + '</div></div>';
+
+    h += '<div class="card"><h2>Sport</h2><div class="chips">' + SPORTS.map(s =>
+      '<button type="button" class="chip" data-sport="' + s + '" aria-pressed="' + (v.sport === s) + '">' + s + '</button>').join("") + '</div></div>';
+
+    h += '<div class="card"><h2>Activités (minutes)</h2>' + ACTIVITES.map(([k, n, goal]) => {
+      const sub = (k === "emploi" || k === "code") && weekend ? "pas le week-end" : "objectif " + goal + " min";
+      return '<div class="row"><div class="name">' + n + '<small>' + sub + '</small></div>' + stepper(k, v[k], k === "emploi" ? 30 : 15, v[k] >= goal ? "ok" : "", " min") + '</div>';
+    }).join("") + '</div>';
+
+    h += '<div class="card"><h2>Nutrition</h2><div class="row"><div class="name">Repas équilibrés<small>protéines + légumes à chaque repas</small></div>' + toggle("repas", v.repas, "t-repas") + '</div></div>';
+
+    h += '<div class="card"><h2>Consommations</h2>' + CONSO.map(([k, n, step, max, lab]) =>
+      '<div class="row"><div class="name">' + n + '<small>objectif ' + lab + '</small></div>' + stepper(k, v[k], step, v[k] <= max ? "ok" : "bad") + '</div>').join("") +
+      '<div class="row"><div class="name">Réseaux sociaux<small>30 min max</small></div>' + stepper("reseaux", v.reseaux, 10, v.reseaux <= 30 ? "ok" : "bad", " min") + '</div></div>';
+
+    h += '<div class="card stack"><h2>Journal du soir</h2>' +
+      '<div><div class="note" style="margin-bottom:6px">Humeur du jour</div><div class="mood">' + [1, 2, 3, 4, 5].map(n =>
+        '<button type="button" data-mood="' + n + '" aria-pressed="' + (v.humeur === n) + '">' + n + '</button>').join("") + '</div></div>' +
+      '<label class="field" for="j-win">Une chose réussie<textarea id="j-win" data-text="win" rows="1">' + esc(v.win) + '</textarea></label>' +
+      '<label class="field" for="j-amel">Une chose à améliorer demain<textarea id="j-amel" data-text="ameliorer" rows="1">' + esc(v.ameliorer) + '</textarea></label>' +
+      '<label class="field" for="j-grat">Une gratitude<textarea id="j-grat" data-text="gratitude" rows="1">' + esc(v.gratitude) + '</textarea></label></div>';
+    h += '</div>';
+    const el = document.getElementById("view-jour");
+    const focusId = document.activeElement && document.activeElement.id;
+    el.innerHTML = h;
+    if (focusId) { const f = document.getElementById(focusId); if (f) f.focus(); }
+  }
+
+  document.getElementById("view-jour").addEventListener("click", e => {
+    const b = e.target.closest("button");
+    if (!b) return;
+    if (b.id === "prev" || b.id === "next") {
+      cur = addDays(cur, b.id === "prev" ? -1 : 1);
+      try { sessionStorage.setItem("lm-cur", cur); } catch (err) {}
+      renderJour(); return;
+    }
+    const d = getDay(cur) || blank();
+    if (b.dataset.toggle) setField(b.dataset.toggle, !d[b.dataset.toggle]);
+    else if (b.dataset.sport) setField("sport", d.sport === b.dataset.sport ? "" : b.dataset.sport);
+    else if (b.dataset.mood) setField("humeur", Number(b.dataset.mood));
+    else if (b.dataset.step) {
+      const k = b.dataset.step;
+      const nv = Math.max(0, Math.round((d[k] + Number(b.dataset.d)) * 10) / 10);
+      setField(k, nv);
+    }
+  });
+  document.getElementById("view-jour").addEventListener("input", e => {
+    const t = e.target;
+    if (!t.dataset.text) return;
+    const d = getDay(cur) || blank();
+    d[t.dataset.text] = t.value;
+    state.days[cur] = d;
+    markDirty();
+  });
+
+  // ---------------- Vue Semaine ----------------
+  let weekStart = (function () { const d = parse(today); const wd = (d.getDay() + 6) % 7; d.setDate(d.getDate() - wd); return iso(d); })();
+  function renderSemaine() {
+    const days = [...Array(7)].map((_, i) => addDays(weekStart, i));
+    const data = days.map(getDay);
+    const lab = ["L", "M", "M", "J", "V", "S", "D"];
+    const rows = [
+      ["Lever", d => d.lever], ["Sommeil 8 h", d => d.sommeil >= 8], ["Étirements", d => d.etir], ["Méditation", d => d.medit],
+      ["Sport", d => !!d.sport], ["Chinois", d => d.chinois >= 30], ["Lecture", d => d.lecture >= 30],
+      ["Guitare", d => d.guitare >= 30], ["Dessin", d => d.dessin >= 30], ["Repas", d => d.repas],
+      ["1 café max", d => d.cafe <= 1], ["Zéro soda", d => d.soda === 0], ["Zéro cigarette", d => d.cig === 0],
+      ["Zéro joint", d => d.joints === 0], ["Zéro alcool", d => d.alcool === 0], ["Réseaux 30 min", d => d.reseaux <= 30]
+    ];
+    const filled = data.filter(Boolean);
+    const avg = filled.length ? filled.reduce((a, d) => a + score(d), 0) / filled.length : null;
+    const sum = k => filled.reduce((a, d) => a + d[k], 0);
+    let h = '<div class="stack">';
+    h += '<div class="card datebar"><button type="button" id="wprev" aria-label="Semaine précédente">‹</button><div class="label"><strong>Semaine du ' +
+      parse(weekStart).toLocaleDateString("fr-FR", { day: "numeric", month: "long" }) + '</strong><small>' + filled.length + ' jour(s) rempli(s)</small></div>' +
+      '<button type="button" id="wnext" aria-label="Semaine suivante">›</button></div>';
+    h += '<div class="tiles"><div class="tile"><div class="k">Score moyen</div><div class="v">' + (avg == null ? "–" : Math.round(avg * 100) + " %") + '</div></div>' +
+      '<div class="tile"><div class="k">Séances de sport</div><div class="v">' + filled.filter(d => d.sport && d.sport !== "Repos").length + '</div><div class="s">objectif 6</div></div>' +
+      '<div class="tile"><div class="k">Chinois</div><div class="v">' + sum("chinois") + ' min</div><div class="s">objectif 210 min</div></div>' +
+      '<div class="tile"><div class="k">Lecture</div><div class="v">' + sum("lecture") + ' min</div><div class="s">objectif 210 min</div></div></div>';
+    h += '<div class="card"><h2>Score par jour</h2><div class="bars">' + data.map(d => {
+      const s = score(d); return '<div class="' + (d ? "" : "empty") + '" style="height:' + (d ? Math.max(4, s * 100) : 4) + '%" title="' + (d ? Math.round(s * 100) + " %" : "vide") + '"></div>';
+    }).join("") + '</div><div class="barlabels">' + lab.map(l => "<span>" + l + "</span>").join("") + '</div></div>';
+    h += '<div class="card" style="overflow-x:auto"><h2>Habitudes</h2><table class="week"><thead><tr><th></th>' + lab.map(l => "<th>" + l + "</th>").join("") + '</tr></thead><tbody>' +
+      rows.map(([n, f]) => '<tr><td>' + n + '</td>' + data.map(d => '<td><span class="dot ' + (d ? (f(d) ? "on" : "off") : "") + '"></span></td>').join("") + '</tr>').join("") +
+      '</tbody></table><p class="note" style="margin-top:8px">Vert : objectif atteint. Rouge : manqué. Gris : jour non rempli.</p></div>';
+    h += '</div>';
+    document.getElementById("view-semaine").innerHTML = h;
+  }
+  document.getElementById("view-semaine").addEventListener("click", e => {
+    const b = e.target.closest("button"); if (!b) return;
+    if (b.id === "wprev") weekStart = addDays(weekStart, -7);
+    if (b.id === "wnext") weekStart = addDays(weekStart, 7);
+    renderSemaine();
+  });
+
+  // ---------------- Vue Sevrage ----------------
+  function streak(k, test) {
+    const keys = Object.keys(state.days).sort();
+    if (!keys.length) return { cur: 0, best: 0 };
+    let best = 0, run = 0, prev = null;
+    for (const s of keys) {
+      const d = getDay(s);
+      if (prev && addDays(prev, 1) !== s) run = 0;
+      run = test(d) ? run + 1 : 0;
+      best = Math.max(best, run);
+      prev = s;
+    }
+    const last = keys[keys.length - 1];
+    const curRun = (last === today || last === addDays(today, -1)) ? run : 0;
+    return { cur: curRun, best };
+  }
+  function renderSevrage() {
+    const keys = Object.keys(state.days).sort();
+    const bc = baseCost();
+    let total = 0, month = 0;
+    const m = today.slice(0, 7);
+    for (const s of keys) { const g = bc - cost(getDay(s)); total += g; if (s.slice(0, 7) === m) month += g; }
+    const items = [["Cigarette", d => d.cig === 0], ["Joints", d => d.joints === 0], ["Alcool", d => d.alcool === 0],
+      ["Soda", d => d.soda === 0], ["1 café max", d => d.cafe <= 1], ["Réseaux 30 min max", d => d.reseaux <= 30]];
+    let h = '<div class="stack">';
+    h += '<div class="tiles"><div class="tile"><div class="k">Économisé au total</div><div class="v" style="color:var(--good)">' + euro(Math.max(0, total)) + '</div><div class="s">sur ' + keys.length + ' jour(s) suivi(s)</div></div>' +
+      '<div class="tile"><div class="k">Ce mois-ci</div><div class="v">' + euro(Math.max(0, month)) + '</div><div class="s">avant : ' + euro(bc * 30) + ' par mois</div></div></div>';
+    h += '<div class="card"><h2>Jours d\'affilée</h2>' + items.map(([n, f]) => {
+      const st = streak(n, f);
+      return '<div class="streak"><span>' + n + '</span><span><span class="pill ' + (st.cur > 0 ? "good" : "bad") + '">' + st.cur + ' j</span> <small class="note">record ' + st.best + ' j</small></span></div>';
+    }).join("") + '<p class="note" style="margin-top:8px">Un écart n\'est pas une rechute : note ce qui l\'a déclenché et reprends le lendemain.</p></div>';
+    h += '<div class="card"><h2>Besoin d\'aide</h2><p class="note" style="font-size:13px">Tabac Info Service : 39 89<br>Drogues Info Service : 0 800 23 13 13<br>Alcool Info Service : 0 980 980 930</p></div>';
+    h += '</div>';
+    document.getElementById("view-sevrage").innerHTML = h;
+  }
+
+  // ---------------- Vue Réglages ----------------
+  function num(id, val, step) { return '<input type="number" inputmode="decimal" id="' + id + '" step="' + step + '" min="0" value="' + val + '">'; }
+  function renderReglages() {
+    const s = state.settings, p = s.prices, b = s.base;
+    let h = '<div class="stack">';
+    h += '<div class="card stack"><h2>Prix (pour calculer les économies)</h2><div class="grid2">' +
+      '<label class="field" for="p-paquet">Paquet de 20 (€)' + num("p-paquet", p.paquet, 0.1) + '</label>' +
+      '<label class="field" for="p-joint">Joint (€)' + num("p-joint", p.joint, 0.1) + '</label>' +
+      '<label class="field" for="p-verre">Verre d\'alcool (€)' + num("p-verre", p.verre, 0.1) + '</label>' +
+      '<label class="field" for="p-sodaL">Litre de soda (€)' + num("p-sodaL", p.sodaL, 0.1) + '</label>' +
+      '<label class="field" for="p-cafe">Café (€)' + num("p-cafe", p.cafe, 0.1) + '</label></div><p class="note">Ce sont des estimations : mets tes vrais prix.</p></div>';
+    h += '<div class="card stack"><h2>Consommation de départ, par jour</h2><div class="grid2">' +
+      '<label class="field" for="b-cig">Cigarettes' + num("b-cig", b.cig, 1) + '</label>' +
+      '<label class="field" for="b-joints">Joints' + num("b-joints", b.joints, 0.5) + '</label>' +
+      '<label class="field" for="b-alcool">Verres d\'alcool' + num("b-alcool", b.alcool, 0.1) + '</label>' +
+      '<label class="field" for="b-soda">Soda (cl)' + num("b-soda", b.soda, 1) + '</label>' +
+      '<label class="field" for="b-cafe">Cafés' + num("b-cafe", b.cafe, 1) + '</label></div>' +
+      '<p class="note">Coût de départ : ' + euro(baseCost()) + ' par jour, soit ' + euro(baseCost() * 30) + ' par mois.</p></div>';
+    h += '<div class="card stack"><h2>Tes données</h2><p class="note">' + Object.keys(state.days).length + ' jour(s) enregistré(s). Elles restent sur ce téléphone : fais une sauvegarde chaque semaine.</p>' +
+      '<div class="chips"><button type="button" class="btn primary" id="backup">Sauvegarder (JSON)</button>' +
+      '<label class="btn" for="restore" style="display:inline-flex;align-items:center">Restaurer</label>' +
+      '<input type="file" id="restore" accept="application/json,.json" hidden>' +
+      '<button type="button" class="btn" id="exportCsv">Exporter en CSV (Excel)</button></div>' +
+      '<p class="note" id="dataMsg"></p></div>';
+    h += '</div>';
+    document.getElementById("view-reglages").innerHTML = h;
+  }
+  document.getElementById("view-reglages").addEventListener("change", e => {
+    const t = e.target; if (!t.id) return;
+    if (t.id === "restore") { restore(t.files && t.files[0]); return; }
+    const [g, k] = t.id.split("-");
+    const v = Math.max(0, parseFloat(String(t.value).replace(",", ".")) || 0);
+    if (g === "p") state.settings.prices[k] = v;
+    if (g === "b") state.settings.base[k] = v;
+    markDirty(); renderReglages();
+  });
+  function csv() {
+    const cols = ["date", "lever", "sommeil", "etir", "medit", "sport", "emploi", "chinois", "code", "lecture", "guitare", "dessin",
+      "repas", "cafe", "soda", "cig", "joints", "alcool", "reseaux", "humeur", "score", "win", "ameliorer", "gratitude"];
+    const q = v => { const s = typeof v === "boolean" ? (v ? "x" : "") : String(v); return /[";\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
+    const lines = [cols.join(";")];
+    for (const s of Object.keys(state.days).sort()) {
+      const d = getDay(s);
+      lines.push(cols.map(c => c === "date" ? s : c === "score" ? Math.round(score(d) * 100) + "%" : q(d[c])).join(";"));
+    }
+    return "﻿" + lines.join("\n");
+  }
+  function download(name, text, type) {
+    const url = URL.createObjectURL(new Blob([text], { type }));
+    const a = document.createElement("a"); a.href = url; a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+  }
+  function restore(file) {
+    if (!file) return;
+    const r = new FileReader();
+    r.onload = () => {
+      try {
+        const d = JSON.parse(r.result);
+        if (!d || typeof d.days !== "object" || !d.settings) throw new Error("format");
+        state = d; markDirty(); renderReglages();
+        document.getElementById("dataMsg").textContent = "Sauvegarde restaurée : " + Object.keys(state.days).length + " jour(s).";
+      } catch (err) { document.getElementById("dataMsg").textContent = "Ce fichier n'est pas une sauvegarde Life Maxxxing."; }
+    };
+    r.readAsText(file);
+  }
+  document.getElementById("view-reglages").addEventListener("click", e => {
+    const b = e.target.closest("button"); if (!b) return;
+    const msg = document.getElementById("dataMsg");
+    if (b.id === "backup") { download("life-maxxxing-sauvegarde-" + today + ".json", JSON.stringify(state), "application/json"); msg.textContent = "Sauvegarde créée : range-la dans Fichiers ou iCloud Drive."; }
+    if (b.id === "exportCsv") { download("life-maxxxing-suivi.csv", csv(), "text/csv"); msg.textContent = "CSV créé : ouvre-le dans Excel."; }
+  });
+
+  // ---------------- Navigation ----------------
+  const VIEWS = ["jour", "semaine", "sevrage", "reglages"];
+  function show() {
+    const v = VIEWS.includes(location.hash.slice(1)) ? location.hash.slice(1) : "jour";
+    VIEWS.forEach(n => { document.getElementById("view-" + n).hidden = n !== v; });
+    document.querySelectorAll("nav.tabs a").forEach(a => a.setAttribute("aria-current", a.dataset.view === v ? "page" : "false"));
+    ({ jour: renderJour, semaine: renderSemaine, sevrage: renderSevrage, reglages: renderReglages })[v]();
+  }
+  window.addEventListener("hashchange", show);
+  show();
+  updateSaveUi();
+
+  if ("serviceWorker" in navigator && location.protocol === "https:") {
+    navigator.serviceWorker.register("sw.js").catch(() => {});
+  }
+})();
+</script>
+</body>
+</html>
