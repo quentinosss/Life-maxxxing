@@ -92,8 +92,8 @@ textarea { resize: vertical; min-height: 44px; }
 .savebar { position: fixed; left: 0; right: 0; bottom: 64px; display: flex; justify-content: center; padding: 0 16px; pointer-events: none; }
 .savebar button { pointer-events: auto; max-width: 528px; width: 100%; height: 48px; border: 0; border-radius: 12px; background: var(--accent); color: #fff; font: 700 15px var(--font-display); box-shadow: 0 6px 18px rgba(0,0,0,0.18); }
 .savebar button:disabled { background: var(--line); color: var(--muted); box-shadow: none; }
-nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; height: calc(60px + env(safe-area-inset-bottom)); background: var(--surface); border-top: 1px solid var(--line); display: grid; grid-template-columns: repeat(4, 1fr); padding-bottom: env(safe-area-inset-bottom); }
-nav.tabs a { display: flex; align-items: center; justify-content: center; text-decoration: none; color: var(--muted); font-weight: 600; font-size: 13px; }
+nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; height: calc(60px + env(safe-area-inset-bottom)); background: var(--surface); border-top: 1px solid var(--line); display: grid; grid-template-columns: repeat(5, 1fr); padding-bottom: env(safe-area-inset-bottom); }
+nav.tabs a { display: flex; align-items: center; justify-content: center; text-decoration: none; color: var(--muted); font-weight: 600; font-size: 12px; }
 nav.tabs a[aria-current="page"] { color: var(--accent); box-shadow: inset 0 3px 0 var(--accent); }
 .view[hidden] { display: none; }
 table.week { width: 100%; border-collapse: collapse; font-size: 12px; font-variant-numeric: tabular-nums; }
@@ -120,6 +120,17 @@ table.week thead th { border-top: 0; color: var(--muted); font-weight: 600; }
 .bars div { background: var(--good); border-radius: 4px 4px 0 0; min-height: 2px; }
 .bars div.empty { background: var(--line); }
 .barlabels { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; font-size: 11px; color: var(--muted); text-align: center; }
+.seg { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.seg button { height: 36px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); font-weight: 600; font-size: 13px; }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+.chart { width: 100%; height: auto; display: block; }
+.chart text { fill: var(--muted); font: 10px var(--font-body); font-variant-numeric: tabular-nums; }
+.legend { display: flex; flex-wrap: wrap; gap: 12px; font-size: 12px; color: var(--muted); margin-top: 6px; }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+.hbar { display: grid; grid-template-columns: 110px 1fr 42px; align-items: center; gap: 8px; font-size: 13px; padding: 4px 0; }
+.hbar .track { height: 10px; background: var(--line); border-radius: 5px; overflow: hidden; }
+.hbar .fill { height: 100%; border-radius: 5px; }
+.hbar b { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
 @media (prefers-reduced-motion: no-preference) { .toggle, .chip, .stepper button { transition: background .15s, color .15s; } }
 </style>
 </head>
@@ -133,6 +144,7 @@ table.week thead th { border-top: 0; color: var(--muted); font-weight: 600; }
 
   <section class="view" id="view-jour"></section>
   <section class="view" id="view-semaine" hidden></section>
+  <section class="view" id="view-stats" hidden></section>
   <section class="view" id="view-sevrage" hidden></section>
   <section class="view" id="view-reglages" hidden></section>
 </div>
@@ -141,6 +153,7 @@ table.week thead th { border-top: 0; color: var(--muted); font-weight: 600; }
 <nav class="tabs" aria-label="Sections">
   <a href="#jour" data-view="jour">Jour</a>
   <a href="#semaine" data-view="semaine">Semaine</a>
+  <a href="#stats" data-view="stats">Stats</a>
   <a href="#sevrage" data-view="sevrage">Sevrage</a>
   <a href="#reglages" data-view="reglages">Réglages</a>
 </nav>
@@ -152,6 +165,13 @@ table.week thead th { border-top: 0; color: var(--muted); font-weight: 600; }
   let storageOk = true;
   try { const saved = localStorage.getItem(DATA_KEY); if (saved) state = JSON.parse(saved); } catch (e) { storageOk = false; }
   state.days = state.days || {};
+  const GOAL_DEFAULTS = { sommeil: 8, chinois: 30, lecture: 30, guitare: 30, dessin: 30, emploi: 120, code: 30, cafe: 1, reseaux: 30, sport: 6 };
+  function ensureDefaults() {
+    state.settings = state.settings || {};
+    state.settings.goals = Object.assign({}, GOAL_DEFAULTS, state.settings.goals || {});
+  }
+  ensureDefaults();
+  const G = () => state.settings.goals;
 
   const pad = n => String(n).padStart(2, "0");
   const iso = d => d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
@@ -163,8 +183,8 @@ table.week thead th { border-top: 0; color: var(--muted); font-weight: 600; }
   const euro = v => v.toLocaleString("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
 
   const ACTIVITES = [
-    ["chinois", "Chinois", 30], ["lecture", "Lecture", 30], ["guitare", "Guitare", 30],
-    ["dessin", "Dessin", 30], ["emploi", "Recherche d'emploi", 120], ["code", "Code de la route", 30]
+    ["chinois", "Chinois"], ["lecture", "Lecture"], ["guitare", "Guitare"],
+    ["dessin", "Dessin"], ["emploi", "Recherche d'emploi"], ["code", "Code de la route"]
   ];
   const CONSO = [
     ["cafe", "Cafés", 1, 1, "1 max"], ["soda", "Soda (cl)", 33, 0, "zéro"], ["cig", "Cigarettes", 1, 0, "zéro"],
@@ -182,9 +202,10 @@ table.week thead th { border-top: 0; color: var(--muted); font-weight: 600; }
 
   function score(d) {
     if (!d) return null;
-    const pts = [d.lever, d.sommeil >= 8, d.etir, d.medit, !!d.sport, d.chinois >= 30, d.lecture >= 30,
-      d.guitare >= 30, d.dessin >= 30, d.repas, d.cafe <= 1, d.soda === 0, d.cig === 0, d.joints === 0,
-      d.alcool === 0, d.reseaux <= 30];
+    const g = G();
+    const pts = [d.lever, d.sommeil >= g.sommeil, d.etir, d.medit, !!d.sport, d.chinois >= g.chinois, d.lecture >= g.lecture,
+      d.guitare >= g.guitare, d.dessin >= g.dessin, d.repas, d.cafe <= g.cafe, d.soda === 0, d.cig === 0, d.joints === 0,
+      d.alcool === 0, d.reseaux <= g.reseaux];
     return pts.filter(Boolean).length / 16;
   }
   function cost(d) {
@@ -245,23 +266,23 @@ table.week thead th { border-top: 0; color: var(--muted); font-weight: 600; }
 
     h += '<div class="card"><h2>Matin</h2>' +
       '<div class="row"><div class="name">Lever à l\'heure<small>8h en mode chômage</small></div>' + toggle("lever", v.lever, "t-lever") + '</div>' +
-      '<div class="row"><div class="name">Sommeil<small>objectif 8 h</small></div>' + stepper("sommeil", v.sommeil, 0.5, v.sommeil >= 8 ? "ok" : "bad", " h") + '</div>' +
+      '<div class="row"><div class="name">Sommeil<small>objectif ' + G().sommeil + ' h</small></div>' + stepper("sommeil", v.sommeil, 0.5, v.sommeil >= G().sommeil ? "ok" : "bad", " h") + '</div>' +
       '<div class="row"><div class="name">Étirements</div>' + toggle("etir", v.etir, "t-etir") + '</div>' +
       '<div class="row"><div class="name">Méditation<small>10 min</small></div>' + toggle("medit", v.medit, "t-medit") + '</div></div>';
 
     h += '<div class="card"><h2>Sport</h2><div class="chips">' + SPORTS.map(s =>
       '<button type="button" class="chip" data-sport="' + s + '" aria-pressed="' + (v.sport === s) + '">' + s + '</button>').join("") + '</div></div>';
 
-    h += '<div class="card"><h2>Activités (minutes)</h2>' + ACTIVITES.map(([k, n, goal]) => {
+    h += '<div class="card"><h2>Activités (minutes)</h2>' + ACTIVITES.map(([k, n]) => {
+      const goal = G()[k];
       const sub = (k === "emploi" || k === "code") && weekend ? "pas le week-end" : "objectif " + goal + " min";
       return '<div class="row"><div class="name">' + n + '<small>' + sub + '</small></div>' + stepper(k, v[k], k === "emploi" ? 30 : 15, v[k] >= goal ? "ok" : "", " min") + '</div>';
     }).join("") + '</div>';
 
     h += '<div class="card"><h2>Nutrition</h2><div class="row"><div class="name">Repas équilibrés<small>protéines + légumes à chaque repas</small></div>' + toggle("repas", v.repas, "t-repas") + '</div></div>';
 
-    h += '<div class="card"><h2>Consommations</h2>' + CONSO.map(([k, n, step, max, lab]) =>
-      '<div class="row"><div class="name">' + n + '<small>objectif ' + lab + '</small></div>' + stepper(k, v[k], step, v[k] <= max ? "ok" : "bad") + '</div>').join("") +
-      '<div class="row"><div class="name">Réseaux sociaux<small>30 min max</small></div>' + stepper("reseaux", v.reseaux, 10, v.reseaux <= 30 ? "ok" : "bad", " min") + '</div></div>';
+    h += '<div class="card"><h2>Consommations</h2>' + CONSO.map(([k, n, step, max0, lab0]) => { const max = k === "cafe" ? G().cafe : max0; const lab = k === "cafe" ? max + " max" : lab0; return '<div class="row"><div class="name">' + n + '<small>objectif ' + lab + '</small></div>' + stepper(k, v[k], step, v[k] <= max ? "ok" : "bad") + '</div>'; }).join("") +
+      '<div class="row"><div class="name">Réseaux sociaux<small>' + G().reseaux + ' min max</small></div>' + stepper("reseaux", v.reseaux, 10, v.reseaux <= G().reseaux ? "ok" : "bad", " min") + '</div></div>';
 
     h += '<div class="card stack"><h2>Journal du soir</h2>' +
       '<div><div class="note" style="margin-bottom:6px">Humeur du jour</div><div class="mood">' + [1, 2, 3, 4, 5].map(n =>
@@ -309,12 +330,13 @@ table.week thead th { border-top: 0; color: var(--muted); font-weight: 600; }
     const days = [...Array(7)].map((_, i) => addDays(weekStart, i));
     const data = days.map(getDay);
     const lab = ["L", "M", "M", "J", "V", "S", "D"];
+    const g = G();
     const rows = [
-      ["Lever", d => d.lever], ["Sommeil 8 h", d => d.sommeil >= 8], ["Étirements", d => d.etir], ["Méditation", d => d.medit],
-      ["Sport", d => !!d.sport], ["Chinois", d => d.chinois >= 30], ["Lecture", d => d.lecture >= 30],
-      ["Guitare", d => d.guitare >= 30], ["Dessin", d => d.dessin >= 30], ["Repas", d => d.repas],
-      ["1 café max", d => d.cafe <= 1], ["Zéro soda", d => d.soda === 0], ["Zéro cigarette", d => d.cig === 0],
-      ["Zéro joint", d => d.joints === 0], ["Zéro alcool", d => d.alcool === 0], ["Réseaux 30 min", d => d.reseaux <= 30]
+      ["Lever", d => d.lever], ["Sommeil " + g.sommeil + " h", d => d.sommeil >= g.sommeil], ["Étirements", d => d.etir], ["Méditation", d => d.medit],
+      ["Sport", d => !!d.sport], ["Chinois", d => d.chinois >= g.chinois], ["Lecture", d => d.lecture >= g.lecture],
+      ["Guitare", d => d.guitare >= g.guitare], ["Dessin", d => d.dessin >= g.dessin], ["Repas", d => d.repas],
+      [g.cafe + " café(s) max", d => d.cafe <= g.cafe], ["Zéro soda", d => d.soda === 0], ["Zéro cigarette", d => d.cig === 0],
+      ["Zéro joint", d => d.joints === 0], ["Zéro alcool", d => d.alcool === 0], ["Réseaux " + g.reseaux + " min", d => d.reseaux <= g.reseaux]
     ];
     const filled = data.filter(Boolean);
     const avg = filled.length ? filled.reduce((a, d) => a + score(d), 0) / filled.length : null;
@@ -324,9 +346,9 @@ table.week thead th { border-top: 0; color: var(--muted); font-weight: 600; }
       parse(weekStart).toLocaleDateString("fr-FR", { day: "numeric", month: "long" }) + '</strong><small>' + filled.length + ' jour(s) rempli(s)</small></div>' +
       '<button type="button" id="wnext" aria-label="Semaine suivante">›</button></div>';
     h += '<div class="tiles"><div class="tile"><div class="k">Score moyen</div><div class="v">' + (avg == null ? "–" : Math.round(avg * 100) + " %") + '</div></div>' +
-      '<div class="tile"><div class="k">Séances de sport</div><div class="v">' + filled.filter(d => d.sport && d.sport !== "Repos").length + '</div><div class="s">objectif 6</div></div>' +
-      '<div class="tile"><div class="k">Chinois</div><div class="v">' + sum("chinois") + ' min</div><div class="s">objectif 210 min</div></div>' +
-      '<div class="tile"><div class="k">Lecture</div><div class="v">' + sum("lecture") + ' min</div><div class="s">objectif 210 min</div></div></div>';
+      '<div class="tile"><div class="k">Séances de sport</div><div class="v">' + filled.filter(d => d.sport && d.sport !== "Repos").length + '</div><div class="s">objectif ' + g.sport + '</div></div>' +
+      '<div class="tile"><div class="k">Chinois</div><div class="v">' + sum("chinois") + ' min</div><div class="s">objectif ' + g.chinois * 7 + ' min</div></div>' +
+      '<div class="tile"><div class="k">Lecture</div><div class="v">' + sum("lecture") + ' min</div><div class="s">objectif ' + g.lecture * 7 + ' min</div></div></div>';
     h += '<div class="card"><h2>Score par jour</h2><div class="bars">' + data.map(d => {
       const s = score(d); return '<div class="' + (d ? "" : "empty") + '" style="height:' + (d ? Math.max(4, s * 100) : 4) + '%" title="' + (d ? Math.round(s * 100) + " %" : "vide") + '"></div>';
     }).join("") + '</div><div class="barlabels">' + lab.map(l => "<span>" + l + "</span>").join("") + '</div></div>';
@@ -341,6 +363,156 @@ table.week thead th { border-top: 0; color: var(--muted); font-weight: 600; }
     if (b.id === "wprev") weekStart = addDays(weekStart, -7);
     if (b.id === "wnext") weekStart = addDays(weekStart, 7);
     renderSemaine();
+  });
+
+
+  // ---------------- Vue Statistiques ----------------
+  let statRange = 30;
+  const C = { good: "var(--good)", accent: "var(--accent)", warn: "var(--warn)", ink: "var(--ink)", muted: "var(--muted)" };
+  function niceMax(v) {
+    const raw = Math.max(v, 0.0001) / 4, e = Math.pow(10, Math.floor(Math.log10(raw)));
+    const step = [1, 2, 2.5, 5, 10].map(m => m * e).find(st => st >= raw);
+    return step * 4;
+  }
+  function lineChart(series, opt) {
+    // series: [{pts:[{x:label,y:number|null}], color}] ; opt: {max, goal, unit, fmt}
+    const W = 320, H = 150, L = 38, R = 14, T = 10, B = 22;
+    const n = series[0].pts.length;
+    const vals = series.flatMap(s => s.pts.map(p => p.y)).filter(v => v != null);
+    const max = opt.max != null ? opt.max : niceMax(Math.max(1, opt.goal || 0, ...vals) * 1.05);
+    const x = i => L + (n <= 1 ? (W - L - R) / 2 : i * (W - L - R) / (n - 1));
+    const y = v => T + (H - T - B) * (1 - v / max);
+    const fmt = opt.fmt || (v => Math.round(v));
+    let g = "";
+    for (let k = 0; k <= 4; k++) {
+      const v = max * k / 4;
+      g += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + y(v) + '" y2="' + y(v) + '" stroke="var(--line)" stroke-width="1"/>' +
+        '<text x="' + (L - 4) + '" y="' + (y(v) + 3) + '" text-anchor="end">' + fmt(v) + '</text>';
+    }
+    if (opt.goal != null) g += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + y(opt.goal) + '" y2="' + y(opt.goal) + '" stroke="var(--ink)" stroke-width="1" stroke-dasharray="4 3" opacity=".55"/>';
+    const step = Math.max(1, Math.ceil(n / 6));
+    series[0].pts.forEach((p, i) => { if ((i % step === 0 && (n - 1 - i >= step * 0.6 || i === 0)) || i === n - 1) g += '<text x="' + x(i) + '" y="' + (H - 6) + '" text-anchor="' + (n > 1 && i === n - 1 ? "end" : n > 1 && i === 0 ? "start" : "middle") + '">' + p.x + '</text>'; });
+    series.forEach(s => {
+      let d = "", started = false, last = null;
+      s.pts.forEach((p, i) => { if (p.y == null) { started = false; return; } d += (started ? "L" : "M") + x(i).toFixed(1) + " " + y(p.y).toFixed(1) + " "; started = true; last = i; });
+      if (s.area) {
+        let seg = [];
+        const flush = () => {
+          if (seg.length > 1) g += '<path d="M' + seg.map(i => x(i).toFixed(1) + " " + y(s.pts[i].y).toFixed(1)).join(" L") +
+            ' L' + x(seg[seg.length - 1]).toFixed(1) + ' ' + y(0) + ' L' + x(seg[0]).toFixed(1) + ' ' + y(0) + ' Z" fill="' + s.color + '" opacity=".12"/>';
+          seg = [];
+        };
+        s.pts.forEach((p, i) => { if (p.y == null) flush(); else seg.push(i); });
+        flush();
+      }
+      g += '<path d="' + d + '" fill="none" stroke="' + s.color + '" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>';
+      s.pts.forEach((p, i) => { if (p.y != null && (n <= 14 || i === last)) g += '<circle cx="' + x(i) + '" cy="' + y(p.y) + '" r="' + (i === last ? 3.5 : 2.2) + '" fill="' + s.color + '"/>'; });
+    });
+    return '<svg class="chart" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + (opt.label || "graphique") + '">' + g + '</svg>';
+  }
+  function barChart(pts, opt) {
+    const W = 320, H = 140, L = 38, R = 14, T = 10, B = 22;
+    const n = pts.length, max = niceMax(Math.max(1, opt.goal || 0, ...pts.map(p => p.y || 0)) * 1.05);
+    const bw = (W - L - R) / n;
+    const y = v => T + (H - T - B) * (1 - v / max);
+    let g = "";
+    for (let k = 0; k <= 4; k++) { const v = max * k / 4; g += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + y(v) + '" y2="' + y(v) + '" stroke="var(--line)"/><text x="' + (L - 4) + '" y="' + (y(v) + 3) + '" text-anchor="end">' + Math.round(v) + '</text>'; }
+    pts.forEach((p, i) => {
+      const v = p.y || 0, x0 = L + i * bw + bw * 0.18, w = bw * 0.64;
+      const col = opt.goal != null ? (v >= opt.goal ? C.good : C.warn) : C.good;
+      g += '<rect x="' + x0 + '" y="' + y(v) + '" width="' + w + '" height="' + (y(0) - y(v)) + '" rx="3" fill="' + col + '"/>';
+      if (v > 0) g += '<text x="' + (x0 + w / 2) + '" y="' + (y(v) - 3) + '" text-anchor="middle">' + Math.round(v * 10) / 10 + '</text>';
+      g += '<text x="' + (x0 + w / 2) + '" y="' + (H - 6) + '" text-anchor="middle">' + p.x + '</text>';
+    });
+    if (opt.goal != null) g += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + y(opt.goal) + '" y2="' + y(opt.goal) + '" stroke="var(--ink)" stroke-dasharray="4 3" opacity=".55"/>';
+    return '<svg class="chart" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + (opt.label || "graphique") + '">' + g + '</svg>';
+  }
+  function renderStats() {
+    const allKeys = Object.keys(state.days).sort();
+    const end = today;
+    const startKey = statRange === 0 ? (allKeys[0] || today) : addDays(today, -(statRange - 1));
+    const days = [];
+    for (let s = startKey; s <= end; s = addDays(s, 1)) days.push(s);
+    const lbl = s => { const d = parse(s); return d.getDate() + "/" + (d.getMonth() + 1); };
+    const data = days.map(s => ({ s, d: getDay(s) }));
+    const filled = data.filter(o => o.d);
+    const g = G();
+    let h = '<div class="stack">';
+    h += '<div class="seg" role="group" aria-label="Période">' + [[7, "7 jours"], [30, "30 jours"], [0, "Tout"]].map(([v, t]) =>
+      '<button type="button" data-range="' + v + '" aria-pressed="' + (statRange === v) + '">' + t + '</button>').join("") + '</div>';
+    if (!filled.length) {
+      h += '<div class="card"><p class="note" style="font-size:14px">Pas encore de journée remplie sur cette période. Remplis l\'onglet Jour : tes graphiques apparaîtront ici.</p></div></div>';
+      document.getElementById("view-stats").innerHTML = h; return;
+    }
+    const avg = (arr) => arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
+    const scAvg = avg(filled.map(o => score(o.d)));
+    const sportN = filled.filter(o => o.d.sport && o.d.sport !== "Repos").length;
+    const bc = baseCost(); const saved = filled.reduce((a, o) => a + bc - cost(o.d), 0);
+    h += '<div class="tiles"><div class="tile"><div class="k">Score moyen</div><div class="v">' + Math.round(scAvg * 100) + ' %</div><div class="s">' + filled.length + ' jour(s) rempli(s)</div></div>' +
+      '<div class="tile"><div class="k">Économisé</div><div class="v" style="color:var(--good)">' + euro(Math.max(0, saved)) + '</div><div class="s">sur la période</div></div>' +
+      '<div class="tile"><div class="k">Séances de sport</div><div class="v">' + sportN + '</div><div class="s">' + (Math.round(sportN / Math.max(1, days.length / 7) * 10) / 10) + ' par semaine</div></div>' +
+      '<div class="tile"><div class="k">Sommeil moyen</div><div class="v">' + (Math.round(avg(filled.map(o => o.d.sommeil)) * 10) / 10).toString().replace(".", ",") + ' h</div><div class="s">objectif ' + g.sommeil + ' h</div></div></div>';
+
+    // score trend
+    h += '<div class="card"><h2>Score du jour</h2>' + lineChart([{ pts: data.map(o => ({ x: lbl(o.s), y: o.d ? Math.round(score(o.d) * 100) : null })), color: C.accent, area: true }],
+      { max: 100, goal: 75, fmt: v => Math.round(v) + "%", label: "Évolution du score" }) + '<div class="legend"><span><i style="background:var(--accent)"></i>Score</span><span>Pointillé : 75 %</span></div></div>';
+
+    // habits completion
+    const hab = [["Lever", d => d.lever], ["Sommeil", d => d.sommeil >= g.sommeil], ["Étirements", d => d.etir], ["Méditation", d => d.medit],
+      ["Sport", d => !!d.sport], ["Chinois", d => d.chinois >= g.chinois], ["Lecture", d => d.lecture >= g.lecture], ["Guitare", d => d.guitare >= g.guitare],
+      ["Dessin", d => d.dessin >= g.dessin], ["Repas", d => d.repas], ["Cafés", d => d.cafe <= g.cafe], ["Zéro soda", d => d.soda === 0],
+      ["Zéro cigarette", d => d.cig === 0], ["Zéro joint", d => d.joints === 0], ["Zéro alcool", d => d.alcool === 0], ["Réseaux", d => d.reseaux <= g.reseaux]]
+      .map(([n, f]) => [n, filled.filter(o => f(o.d)).length / filled.length]).sort((a, b) => b[1] - a[1]);
+    h += '<div class="card"><h2>Habitudes tenues (% des jours)</h2>' + hab.map(([n, r]) => {
+      const col = r >= 0.75 ? C.good : r >= 0.5 ? C.warn : C.accent;
+      return '<div class="hbar"><span>' + n + '</span><div class="track"><div class="fill" style="width:' + Math.round(r * 100) + '%;background:' + col + '"></div></div><b>' + Math.round(r * 100) + '%</b></div>';
+    }).join("") + '</div>';
+
+    // consumption per week or per day
+    const weekly = days.length > 14;
+    const bucket = (key) => {
+      if (!weekly) return data.map(o => ({ x: lbl(o.s), y: o.d ? o.d[key] : null }));
+      const out = []; let i = 0;
+      while (i < data.length) {
+        const chunk = data.slice(i, i + 7); const f = chunk.filter(o => o.d);
+        out.push({ x: lbl(chunk[0].s), y: f.length ? Math.round(f.reduce((a, o) => a + o.d[key], 0) / f.length * 10) / 10 : null });
+        i += 7;
+      }
+      return out;
+    };
+    h += '<div class="card"><h2>Consommations ' + (weekly ? "(moyenne par jour, par semaine)" : "(par jour)") + '</h2>' +
+      lineChart([{ pts: bucket("cig"), color: C.accent }, { pts: bucket("joints"), color: C.warn }, { pts: bucket("alcool"), color: C.ink }, { pts: bucket("cafe"), color: C.muted }],
+        { label: "Consommations", fmt: v => Math.round(v * 10) / 10 }) +
+      '<div class="legend"><span><i style="background:var(--accent)"></i>Cigarettes</span><span><i style="background:var(--warn)"></i>Joints</span><span><i style="background:var(--ink)"></i>Alcool (verres)</span><span><i style="background:var(--muted)"></i>Cafés</span></div></div>';
+
+    // minutes per activity (avg per filled day vs goal)
+    const acts = [["chinois", "Chinois"], ["lecture", "Lecture"], ["guitare", "Guitare"], ["dessin", "Dessin"], ["emploi", "Emploi"], ["code", "Code"]];
+    h += '<div class="card"><h2>Minutes par jour (moyenne)</h2>' + acts.map(([k, n]) => {
+      const m = avg(filled.map(o => o.d[k])); const r = Math.min(1, m / Math.max(1, g[k]));
+      return '<div class="hbar"><span>' + n + '</span><div class="track"><div class="fill" style="width:' + Math.round(r * 100) + '%;background:' + (r >= 1 ? C.good : C.warn) + '"></div></div><b>' + Math.round(m) + '</b></div>';
+    }).join("") + '<p class="note" style="margin-top:6px">Barre pleine : objectif atteint en moyenne.</p></div>';
+
+    // sport per week
+    if (days.length >= 7) {
+      const wk = []; for (let i = 0; i < data.length; i += 7) { const c = data.slice(i, i + 7); wk.push({ x: lbl(c[0].s), y: c.filter(o => o.d && o.d.sport && o.d.sport !== "Repos").length }); }
+      h += '<div class="card"><h2>Séances de sport par semaine</h2>' + barChart(wk, { goal: g.sport, label: "Sport par semaine" }) + '<div class="legend"><span>Pointillé : objectif ' + g.sport + '</span></div></div>';
+    }
+
+    // savings cumulative
+    let cum = 0;
+    const cumPts = data.map(o => { if (o.d) cum += bc - cost(o.d); return { x: lbl(o.s), y: o.d ? Math.round(cum) : null }; });
+    h += '<div class="card"><h2>Économies cumulées (€)</h2>' + lineChart([{ pts: cumPts, color: C.good, area: true }], { label: "Économies cumulées", fmt: v => Math.round(v) + "€" }) + '</div>';
+
+    // sleep & mood
+    h += '<div class="card"><h2>Sommeil (h) et humeur (1 à 5)</h2>' + lineChart([{ pts: data.map(o => ({ x: lbl(o.s), y: o.d ? o.d.sommeil : null })), color: C.ink },
+      { pts: data.map(o => ({ x: lbl(o.s), y: o.d && o.d.humeur ? o.d.humeur : null })), color: C.accent }], { goal: g.sommeil, label: "Sommeil et humeur", fmt: v => Math.round(v) }) +
+      '<div class="legend"><span><i style="background:var(--ink)"></i>Sommeil</span><span><i style="background:var(--accent)"></i>Humeur</span><span>Pointillé : ' + g.sommeil + ' h</span></div></div>';
+    h += '</div>';
+    document.getElementById("view-stats").innerHTML = h;
+  }
+  document.getElementById("view-stats").addEventListener("click", e => {
+    const b = e.target.closest("button[data-range]"); if (!b) return;
+    statRange = Number(b.dataset.range); renderStats();
   });
 
   // ---------------- Vue Sevrage ----------------
@@ -366,7 +538,7 @@ table.week thead th { border-top: 0; color: var(--muted); font-weight: 600; }
     const m = today.slice(0, 7);
     for (const s of keys) { const g = bc - cost(getDay(s)); total += g; if (s.slice(0, 7) === m) month += g; }
     const items = [["Cigarette", d => d.cig === 0], ["Joints", d => d.joints === 0], ["Alcool", d => d.alcool === 0],
-      ["Soda", d => d.soda === 0], ["1 café max", d => d.cafe <= 1], ["Réseaux 30 min max", d => d.reseaux <= 30]];
+      ["Soda", d => d.soda === 0], [G().cafe + " café(s) max", d => d.cafe <= G().cafe], ["Réseaux " + G().reseaux + " min max", d => d.reseaux <= G().reseaux]];
     let h = '<div class="stack">';
     h += '<div class="tiles"><div class="tile"><div class="k">Économisé au total</div><div class="v" style="color:var(--good)">' + euro(Math.max(0, total)) + '</div><div class="s">sur ' + keys.length + ' jour(s) suivi(s)</div></div>' +
       '<div class="tile"><div class="k">Ce mois-ci</div><div class="v">' + euro(Math.max(0, month)) + '</div><div class="s">avant : ' + euro(bc * 30) + ' par mois</div></div></div>';
@@ -383,7 +555,20 @@ table.week thead th { border-top: 0; color: var(--muted); font-weight: 600; }
   function num(id, val, step) { return '<input type="number" inputmode="decimal" id="' + id + '" step="' + step + '" min="0" value="' + val + '">'; }
   function renderReglages() {
     const s = state.settings, p = s.prices, b = s.base;
+    const g = G();
     let h = '<div class="stack">';
+    h += '<div class="card stack"><h2>Mes objectifs</h2><div class="grid2">' +
+      '<label class="field" for="g-sommeil">Sommeil (h)' + num("g-sommeil", g.sommeil, 0.5) + '</label>' +
+      '<label class="field" for="g-sport">Séances de sport / semaine' + num("g-sport", g.sport, 1) + '</label>' +
+      '<label class="field" for="g-emploi">Recherche d\'emploi (min)' + num("g-emploi", g.emploi, 15) + '</label>' +
+      '<label class="field" for="g-chinois">Chinois (min)' + num("g-chinois", g.chinois, 5) + '</label>' +
+      '<label class="field" for="g-lecture">Lecture (min)' + num("g-lecture", g.lecture, 5) + '</label>' +
+      '<label class="field" for="g-guitare">Guitare (min)' + num("g-guitare", g.guitare, 5) + '</label>' +
+      '<label class="field" for="g-dessin">Dessin (min)' + num("g-dessin", g.dessin, 5) + '</label>' +
+      '<label class="field" for="g-code">Code de la route (min)' + num("g-code", g.code, 5) + '</label>' +
+      '<label class="field" for="g-cafe">Cafés max / jour' + num("g-cafe", g.cafe, 1) + '</label>' +
+      '<label class="field" for="g-reseaux">Réseaux max (min)' + num("g-reseaux", g.reseaux, 5) + '</label></div>' +
+      '<p class="note">Change un objectif quand tu veux : le score et les couleurs suivent tout de suite.</p></div>';
     h += '<div class="card stack"><h2>Prix (pour calculer les économies)</h2><div class="grid2">' +
       '<label class="field" for="p-paquet">Paquet de 20 (€)' + num("p-paquet", p.paquet, 0.1) + '</label>' +
       '<label class="field" for="p-joint">Joint (€)' + num("p-joint", p.joint, 0.1) + '</label>' +
@@ -413,18 +598,29 @@ table.week thead th { border-top: 0; color: var(--muted); font-weight: 600; }
     const v = Math.max(0, parseFloat(String(t.value).replace(",", ".")) || 0);
     if (g === "p") state.settings.prices[k] = v;
     if (g === "b") state.settings.base[k] = v;
-    markDirty(); renderReglages();
+    if (g === "g") state.settings.goals[k] = v;
+    markDirty(); setTimeout(renderReglages, 0);
   });
   function csv() {
     const cols = ["date", "lever", "sommeil", "etir", "medit", "sport", "emploi", "chinois", "code", "lecture", "guitare", "dessin",
       "repas", "cafe", "soda", "cig", "joints", "alcool", "reseaux", "humeur", "score", "win", "ameliorer", "gratitude"];
-    const q = v => { const s = typeof v === "boolean" ? (v ? "x" : "") : String(v); return /[";\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
+    const q = v => { const s = typeof v === "boolean" ? (v ? "x" : "") : typeof v === "number" ? String(v).replace(".", ",") : String(v); return /[";\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
     const lines = [cols.join(";")];
     for (const s of Object.keys(state.days).sort()) {
       const d = getDay(s);
       lines.push(cols.map(c => c === "date" ? s : c === "score" ? Math.round(score(d) * 100) + "%" : q(d[c])).join(";"));
     }
     return "﻿" + lines.join("\n");
+  }
+  async function share(name, text, type, msg, okText) {
+    try {
+      const file = new File([text], name, { type });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], title: name });
+        msg.textContent = okText; return;
+      }
+    } catch (err) { if (err && err.name === "AbortError") { msg.textContent = "Partage annulé."; return; } }
+    download(name, text, type); msg.textContent = okText;
   }
   function download(name, text, type) {
     const url = URL.createObjectURL(new Blob([text], { type }));
@@ -439,7 +635,7 @@ table.week thead th { border-top: 0; color: var(--muted); font-weight: 600; }
       try {
         const d = JSON.parse(r.result);
         if (!d || typeof d.days !== "object" || !d.settings) throw new Error("format");
-        state = d; markDirty(); renderReglages();
+        state = d; ensureDefaults(); markDirty(); renderReglages();
         document.getElementById("dataMsg").textContent = "Sauvegarde restaurée : " + Object.keys(state.days).length + " jour(s).";
       } catch (err) { document.getElementById("dataMsg").textContent = "Ce fichier n'est pas une sauvegarde Life Maxxxing."; }
     };
@@ -448,17 +644,17 @@ table.week thead th { border-top: 0; color: var(--muted); font-weight: 600; }
   document.getElementById("view-reglages").addEventListener("click", e => {
     const b = e.target.closest("button"); if (!b) return;
     const msg = document.getElementById("dataMsg");
-    if (b.id === "backup") { download("life-maxxxing-sauvegarde-" + today + ".json", JSON.stringify(state), "application/json"); msg.textContent = "Sauvegarde créée : range-la dans Fichiers ou iCloud Drive."; }
-    if (b.id === "exportCsv") { download("life-maxxxing-suivi.csv", csv(), "text/csv"); msg.textContent = "CSV créé : ouvre-le dans Excel."; }
+    if (b.id === "backup") share("life-maxxxing-sauvegarde-" + today + ".json", JSON.stringify(state), "application/json", msg, "Sauvegarde créée : choisis « Enregistrer dans Fichiers » (iCloud Drive).");
+    if (b.id === "exportCsv") share("life-maxxxing-suivi-" + today + ".csv", csv(), "text/csv", msg, "Export créé : ouvre-le avec Excel ou enregistre-le dans Fichiers.");
   });
 
   // ---------------- Navigation ----------------
-  const VIEWS = ["jour", "semaine", "sevrage", "reglages"];
+  const VIEWS = ["jour", "semaine", "stats", "sevrage", "reglages"];
   function show() {
     const v = VIEWS.includes(location.hash.slice(1)) ? location.hash.slice(1) : "jour";
     VIEWS.forEach(n => { document.getElementById("view-" + n).hidden = n !== v; });
     document.querySelectorAll("nav.tabs a").forEach(a => a.setAttribute("aria-current", a.dataset.view === v ? "page" : "false"));
-    ({ jour: renderJour, semaine: renderSemaine, sevrage: renderSevrage, reglages: renderReglages })[v]();
+    ({ jour: renderJour, semaine: renderSemaine, stats: renderStats, sevrage: renderSevrage, reglages: renderReglages })[v]();
   }
   window.addEventListener("hashchange", show);
   show();
